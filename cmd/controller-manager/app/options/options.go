@@ -29,11 +29,16 @@ import (
 	cliflag "k8s.io/component-base/cli/flag"
 )
 
+const (
+	leaderElectNamespace = "devops"
+)
+
 type LaborerControllerManagerOptions struct {
-	KubernetesOptions *k8s.KubernetesOptions
-	LeaderElect       bool
-	LeaderElection    *leaderelection.LeaderElectionConfig
-	WebhookCertDir    string
+	KubernetesOptions    *k8s.KubernetesOptions
+	LeaderElect          bool
+	LeaderElectNamespace string
+	LeaderElection       *leaderelection.LeaderElectionConfig
+	WebhookCertDir       string
 }
 
 func NewLaborerControllerManagerOptions() *LaborerControllerManagerOptions {
@@ -44,8 +49,9 @@ func NewLaborerControllerManagerOptions() *LaborerControllerManagerOptions {
 			RenewDeadline: 15 * time.Second,
 			RetryPeriod:   5 * time.Second,
 		},
-		LeaderElect:    false,
-		WebhookCertDir: "",
+		LeaderElect:          false,
+		LeaderElectNamespace: leaderElectNamespace,
+		WebhookCertDir:       "",
 	}
 }
 
@@ -60,6 +66,9 @@ func (s *LaborerControllerManagerOptions) Flags() cliflag.NamedFlagSets {
 	fs.BoolVar(&s.LeaderElect, "leader-elect", s.LeaderElect, ""+
 		"Whether to enable leader election. This field should be enabled when controller manager"+
 		"deployed with multiple replicas.")
+
+	fs.StringVar(&s.LeaderElectNamespace, "leader-elect-namespace", s.LeaderElectNamespace, ""+
+		"Determines the namespace in which the leader election configmap will be created.")
 
 	fs.StringVar(&s.WebhookCertDir, "webhook-cert-dir", s.WebhookCertDir, ""+
 		"Certificate directory used to setup webhooks, need tls.crt and tls.key placed inside."+

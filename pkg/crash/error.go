@@ -14,25 +14,24 @@
  limitations under the License.
 */
 
-package main
+package crash
 
-import (
-	"os"
+import "k8s.io/klog"
 
-	"github.com/arugal/laborer/cmd/controller-manager/app"
-	"github.com/arugal/laborer/pkg/crash"
+var ReallyCrash = true
 
-	_ "github.com/arugal/laborer/pkg/controller/namespace"
-)
-
-func init() {
-	crash.ReallyCrash = false
+func HandleCrash(additionalHandlers ...func(interface{})) {
+	if r := recover(); r != nil {
+		for _, fn := range additionalHandlers {
+			fn(r)
+		}
+		if ReallyCrash {
+			// Actually proceed to panic.
+			panic(r)
+		}
+	}
 }
 
-func main() {
-	command := app.NewControllerManagerCommand()
-
-	if err := command.Execute(); err != nil {
-		os.Exit(1)
-	}
+func DefaultHandler(err interface{}) {
+	klog.Error(err)
 }

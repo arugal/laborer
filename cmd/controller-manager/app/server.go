@@ -21,25 +21,32 @@ import (
 	"os"
 
 	"github.com/arugal/laborer/cmd/controller-manager/app/options"
+	eventsv1 "github.com/arugal/laborer/pkg/api/events/v1"
 	"github.com/arugal/laborer/pkg/config"
+	"github.com/arugal/laborer/pkg/controller/namespace"
+	"github.com/arugal/laborer/pkg/informers"
+	"github.com/arugal/laborer/pkg/simple/client/k8s"
 	"github.com/arugal/laborer/pkg/utils/term"
 	"github.com/spf13/cobra"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
 )
 
 func NewControllerManagerCommand() *cobra.Command {
 	s := options.NewLaborerControllerManagerOptions()
 	conf, err := config.TryLoadFromDisk()
 	if err != nil {
-		klog.Fatal("Failed to load configuration from disk", err)
+		klog.Warning("Failed to load configuration from disk", err)
 	} else {
 		s = &options.LaborerControllerManagerOptions{
-			KubernetesOptions: conf.KubernetesOptions,
-			LeaderElection:    s.LeaderElection,
-			LeaderElect:       s.LeaderElect,
-			WebhookCertDir:    s.WebhookCertDir,
+			KubernetesOptions:    conf.KubernetesOptions,
+			LeaderElection:       s.LeaderElection,
+			LeaderElectNamespace: s.LeaderElectNamespace,
+			LeaderElect:          s.LeaderElect,
+			WebhookCertDir:       s.WebhookCertDir,
 		}
 	}
 
@@ -52,7 +59,10 @@ func NewControllerManagerCommand() *cobra.Command {
 				os.Exit(1)
 			}
 
-			// TODO run
+			if err := run(s, signals.SetupSignalHandler()); err != nil {
+				klog.Error(err)
+				os.Exit(1)
+			}
 		},
 		SilenceUsage: true,
 	}
@@ -70,4 +80,73 @@ func NewControllerManagerCommand() *cobra.Command {
 		cliflag.PrintSections(cmd.OutOrStdout(), namedFlagSets, cols)
 	})
 	return cmd
+}
+
+func run(s *options.LaborerControllerManagerOptions, stopCh <-chan struct{}) error {
+	kubernetesClient, err := k8s.NewKubernetesClient(s.KubernetesOptions)
+	if err != nil {
+		klog.Errorf("Failed to create kubernetes clientset %v", err)
+		return err
+	}
+
+	informerFactory := informers.NewInformerFactories(kubernetesClient.Kubernetes())
+
+	mgrOptions := manager.Options{
+		CertDir: s.WebhookCertDir,
+		Port:    8443,
+	}
+
+	if s.LeaderElect {
+		mgrOptions = manager.Options{
+			CertDir:                 s.WebhookCertDir,
+			Port:                    8443,
+			LeaderElection:          s.LeaderElect,
+			LeaderElectionNamespace: s.LeaderElectNamespace,
+			LeaderElectionID:        "laborer-controller-manager-leader-election",
+			LeaseDuration:           &s.LeaderElection.LeaseDuration,
+			RetryPeriod:             &s.LeaderElection.RetryPeriod,
+			RenewDeadline:           &s.LeaderElection.RenewDeadline,
+		}
+	}
+
+	klog.V(0).Info("setting up manager")
+
+	imageEventInterface := eventsv1.NewImageEventInterface()
+
+	// Use 8443 instead of 443 cause we need root permission to bind port 443
+	mgr, err := manager.New(kubernetesClient.Config(), mgrOptions)
+	if err != nil {
+		klog.Fatalf("unable to set up overall controller manager: %v", err)
+	}
+
+	namespaceController := namespace.NewNamespaceController(informerFactory, kubernetesClient.Kubernetes(), imageEventInterface)
+
+	controllers := map[string]manager.Runnable{
+		"namespace-controller": namespaceController,
+	}
+
+	for name, ctrl := range controllers {
+		if ctrl == nil {
+			klog.V(4).Infof("%s is not going to run due to dependent component disabled.", name)
+			continue
+		}
+		if err := mgr.Add(ctrl); err != nil {
+			klog.Error(err, "add controller to manager failed", "name", name)
+			return err
+		}
+	}
+
+	// Start cache data after all informer is registered
+	klog.V(0).Info("Starting cache resource from apiserver...")
+	informerFactory.Start(stopCh)
+
+	// Start image event interface
+	klog.V(0).Info("Starting image event interface...")
+	imageEventInterface.Start(stopCh)
+
+	klog.V(0).Info("Starting the controllers.")
+	if err = mgr.Start(stopCh); err != nil {
+		klog.Fatalf("unable to run the manager: %v", err)
+	}
+	return nil
 }
