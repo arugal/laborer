@@ -14,26 +14,30 @@
  limitations under the License.
 */
 
-package main
+package v1
 
-import (
-	"os"
-
-	"github.com/arugal/laborer/cmd/controller-manager/app"
-	"github.com/arugal/laborer/pkg/crash"
-
-	_ "github.com/arugal/laborer/pkg/controller/namespace/configmap"
-	_ "github.com/arugal/laborer/pkg/controller/namespace/deployment"
-)
-
-func init() {
-	crash.ReallyCrash = false
+type Deployment struct {
+	Spec DeploymentSpec `json:"spec"`
 }
 
-func main() {
-	command := app.NewControllerManagerCommand()
+type DeploymentSpec struct {
+	Template PodTemplateSpec `json:"template"`
+}
 
-	if err := command.Execute(); err != nil {
-		os.Exit(1)
-	}
+type PodTemplateSpec struct {
+	Metadata Metadata `json:"metadata,omitempty"`
+	Spec     PodSpec  `json:"spec,omitempty"`
+}
+
+type Metadata struct {
+	Annotations map[string]string `json:"annotations"`
+}
+
+type PodSpec struct {
+	Containers []Container `json:"containers,omitempty"`
+}
+
+type Container struct {
+	Name  string `json:"name"`
+	Image string `json:"image"`
 }

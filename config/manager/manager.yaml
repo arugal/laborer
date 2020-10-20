@@ -3,7 +3,13 @@ kind: Namespace
 metadata:
   labels:
     control-plane: controller-manager
-  name: system
+  name: laborer-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: laborer
+  namespace: system
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -25,8 +31,6 @@ spec:
       containers:
       - command:
         - /manager
-        args:
-        - --enable-leader-election
         image: controller:latest
         name: manager
         resources:
@@ -37,3 +41,4 @@ spec:
             cpu: 100m
             memory: 20Mi
       terminationGracePeriodSeconds: 10
+      serviceAccountName: laborer

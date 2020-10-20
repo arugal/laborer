@@ -31,7 +31,7 @@ func RegisterNewControllerFunc(newFunc NewControllerFunc) {
 	newControllerFuncs = append(newControllerFuncs, newFunc)
 }
 
-// Controller
+// Controller Listens for resources in the current namespace
 type Controller interface {
 	// return the namespace of the current controller
 	Namespace() string
@@ -51,7 +51,7 @@ func (b BaseController) Namespace() string {
 	return b.NameSpace
 }
 
-func (b BaseController) ProcessImageEvent(event eventsv1.ImageEvent) {
+func (b BaseController) ProcessImageEvent(eventsv1.ImageEvent) {
 
 }
 

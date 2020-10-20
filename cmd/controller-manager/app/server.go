@@ -144,6 +144,10 @@ func run(s *options.LaborerControllerManagerOptions, stopCh <-chan struct{}) err
 	klog.V(0).Info("Starting image event interface...")
 	imageEventInterface.Start(stopCh)
 
+	// webhook
+	//hookServer := mgr.GetWebhookServer()
+	//hookServer.
+
 	klog.V(0).Info("Starting the controllers.")
 	if err = mgr.Start(stopCh); err != nil {
 		klog.Fatalf("unable to run the manager: %v", err)
