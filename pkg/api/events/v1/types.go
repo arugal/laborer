@@ -58,6 +58,11 @@ type ImageEventInterface interface {
 	Start(stop <-chan struct{})
 }
 
+type ImageEventCollect interface {
+	// collect new image event
+	Collect(event ImageEvent)
+}
+
 func NewImageEventInterface() ImageEventInterface {
 	return &defaultImageEventInterface{
 		eventCh: make(chan ImageEvent, 100),

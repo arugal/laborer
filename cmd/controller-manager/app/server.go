@@ -27,6 +27,7 @@ import (
 	"github.com/arugal/laborer/pkg/informers"
 	"github.com/arugal/laborer/pkg/simple/client/k8s"
 	"github.com/arugal/laborer/pkg/utils/term"
+	"github.com/arugal/laborer/pkg/webhook/image/harbor"
 	"github.com/spf13/cobra"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	cliflag "k8s.io/component-base/cli/flag"
@@ -145,8 +146,8 @@ func run(s *options.LaborerControllerManagerOptions, stopCh <-chan struct{}) err
 	imageEventInterface.Start(stopCh)
 
 	// webhook
-	//hookServer := mgr.GetWebhookServer()
-	//hookServer.
+	hookServer := mgr.GetWebhookServer()
+	hookServer.Register("/webhook-v1alpha1-harbor-image", harbor.NewImageEventWebHook(imageEventInterface))
 
 	klog.V(0).Info("Starting the controllers.")
 	if err = mgr.Start(stopCh); err != nil {
