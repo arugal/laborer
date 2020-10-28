@@ -42,7 +42,7 @@ func (i *imageEventWebHook) ServeHTTP(_ http.ResponseWriter, req *http.Request) 
 		return
 	}
 	if len(body) == 0 {
-		klog.Info("Harbor webhook body is empty")
+		klog.Warningf("Harbor webhook body is empty")
 		return
 	}
 	var bodyMap map[string]interface{}
@@ -52,7 +52,7 @@ func (i *imageEventWebHook) ServeHTTP(_ http.ResponseWriter, req *http.Request) 
 		return
 	}
 	if typ, ok := bodyMap["type"]; !ok || typ != Push {
-		klog.Infof("Unsupported event type %s, ignored", string(body))
+		klog.Warningf("Unsupported event type %s, ignored", string(body))
 		return
 	}
 
@@ -64,7 +64,7 @@ func (i *imageEventWebHook) ServeHTTP(_ http.ResponseWriter, req *http.Request) 
 	}
 
 	if klog.V(4) {
-		klog.Info("Harbor event data: %s", string(body))
+		klog.Infof("Harbor event data: %s", string(body))
 	}
 
 	for _, resource := range webhook.EventData.Resources {

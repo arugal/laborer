@@ -28,19 +28,20 @@ const (
 //	 		"resources":[
 //	 			{
 //	 				"digest":"sha256:65fffb1482321b23ed3fc24bd6961385335ec7fca12de3420a9d778afe3c5e56",
-//	 				"tag":"v1.0.0","resource_url":"docker-register.bobandata.com/ias/ias:v1.0.0"
+//	 				"tag":"v1.0.0","resource_url":"image/image:v1.0.0"
 //	 			}
 //			],
 //			"repository":
 //			{
 //				"date_created":1600856703,
-//				"name":"ias",
-//				"namespace":"ias",
-//				"repo_full_name":"ias/ias",
+//				"name":"image",
+//				"namespace":"image",
+//				"repo_full_name":"image/image",
 //				"repo_type":"private"
 //			}
 //		}
 //	}
+
 type WebHook struct {
 	Type      string    `json:"type"`
 	OccurAt   int32     `json:"occur_at"`

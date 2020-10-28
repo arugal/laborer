@@ -40,7 +40,7 @@ type Controller interface {
 	ProcessImageEvent(event eventsv1.ImageEvent)
 }
 
-type NewControllerFunc func(namespace string, k8sClient kubernetes.Interface, informers informers.InformerFactory) Controller
+type NewControllerFunc func(namespace string, k8sClient kubernetes.Interface, namespaceInformerFactory informers.InformerFactory) Controller
 
 // BaseController empty implementation
 type BaseController struct {
@@ -59,29 +59,34 @@ func (b BaseController) ProcessImageEvent(eventsv1.ImageEvent) {
 type aggregationController struct {
 	BaseController
 
-	k8sClient kubernetes.Interface
-	informers informers.InformerFactory
+	k8sClient                kubernetes.Interface
+	namespaceInformerFactory informers.InformerFactory
 
 	controllers []Controller
+
+	stopCh chan struct{}
 }
 
-func NewAggregationController(namespace string, k8sClient kubernetes.Interface, informers informers.InformerFactory) Controller {
+func NewAggregationController(namespace string, k8sClient kubernetes.Interface) Controller {
 	c := &aggregationController{
 		BaseController: BaseController{
 			NameSpace: namespace,
 		},
-		k8sClient: k8sClient,
-		informers: informers,
+		k8sClient:                k8sClient,
+		namespaceInformerFactory: informers.NewWithNamespaceInformerFactories(k8sClient, namespace),
+		stopCh:                   make(chan struct{}),
 	}
 
 	for _, newFunc := range newControllerFuncs {
-		c.controllers = append(c.controllers, newFunc(namespace, k8sClient, informers))
+		c.controllers = append(c.controllers, newFunc(namespace, k8sClient, c.namespaceInformerFactory))
 	}
 
 	return c
 }
 
 func (a *aggregationController) Run() {
+	a.namespaceInformerFactory.Start(a.stopCh)
+
 	for _, c := range a.controllers {
 		c.Run()
 	}
@@ -91,6 +96,7 @@ func (a *aggregationController) Stop() {
 	for _, c := range a.controllers {
 		c.Stop()
 	}
+	close(a.stopCh)
 }
 
 func (a *aggregationController) ProcessImageEvent(event eventsv1.ImageEvent) {

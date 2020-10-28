@@ -48,6 +48,17 @@ func NewInformerFactories(client kubernetes.Interface) InformerFactory {
 	return factory
 }
 
+// NewWithNamespaceInformerFactories
+func NewWithNamespaceInformerFactories(client kubernetes.Interface, ns string) InformerFactory {
+	factory := &informerFactories{}
+
+	if client != nil {
+		factory.informerFactory = k8sinformers.NewSharedInformerFactoryWithOptions(client, defaultResync, k8sinformers.WithNamespace(ns))
+	}
+
+	return factory
+}
+
 func (f *informerFactories) KubernetesSharedInformerFactory() k8sinformers.SharedInformerFactory {
 	return f.informerFactory
 }

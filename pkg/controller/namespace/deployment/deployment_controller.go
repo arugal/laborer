@@ -25,12 +25,12 @@ import (
 	"github.com/arugal/laborer/pkg/controller/namespace"
 	"github.com/arugal/laborer/pkg/crash"
 	"github.com/arugal/laborer/pkg/informers"
-	apiappsv1 "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
 	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
+	v1 "k8s.io/client-go/listers/apps/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog"
 )
@@ -39,23 +39,24 @@ func init() {
 	namespace.RegisterNewControllerFunc(newDeploymentControllerFunc)
 }
 
-const resourceName = "deployments"
-
+// deploymentController 当有新的 image 被 push 时更新对应的 deployment#container
 type deploymentController struct {
 	namespace.BaseController
 
-	stopCh   chan struct{}
-	indexer  cache.Indexer
-	informer cache.Controller
+	stopCh chan struct{}
+
+	deploymentInformerSynced cache.InformerSynced
+	deploymentLister         v1.DeploymentLister
 
 	deploymentsClient appsv1.DeploymentInterface
 }
 
-// newDeploymentControllerFunc
-func newDeploymentControllerFunc(ns string, k8sClient kubernetes.Interface, informers informers.InformerFactory) namespace.Controller {
-	deploymentListWatcher := cache.NewListWatchFromClient(k8sClient.AppsV1().RESTClient(), resourceName, ns, fields.Everything())
+// newDeploymentControllerFunc 创建 deployment 控制器
+func newDeploymentControllerFunc(ns string, k8sClient kubernetes.Interface, namespaceInformerFactory informers.InformerFactory) namespace.Controller {
+	deploymentLister := namespaceInformerFactory.KubernetesSharedInformerFactory().Apps().V1().Deployments().Lister()
+	namespaceInformer := namespaceInformerFactory.KubernetesSharedInformerFactory().Apps().V1().Deployments().Informer()
 
-	indexer, informer := cache.NewIndexerInformer(deploymentListWatcher, &apiappsv1.Deployment{}, 0, cache.ResourceEventHandlerFuncs{
+	namespaceInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			klog.V(2).Infof("Deployment %s controller add: %v", ns, obj)
 		},
@@ -65,7 +66,7 @@ func newDeploymentControllerFunc(ns string, k8sClient kubernetes.Interface, info
 		DeleteFunc: func(obj interface{}) {
 			klog.V(2).Infof("Deployment %s controller add: %v", ns, obj)
 		},
-	}, cache.Indexers{})
+	})
 
 	deploymentsClient := k8sClient.AppsV1().Deployments(ns)
 
@@ -73,10 +74,10 @@ func newDeploymentControllerFunc(ns string, k8sClient kubernetes.Interface, info
 		BaseController: namespace.BaseController{
 			NameSpace: ns,
 		},
-		stopCh:            make(chan struct{}),
-		indexer:           indexer,
-		informer:          informer,
-		deploymentsClient: deploymentsClient,
+		stopCh:                   make(chan struct{}),
+		deploymentInformerSynced: namespaceInformer.HasSynced,
+		deploymentLister:         deploymentLister,
+		deploymentsClient:        deploymentsClient,
 	}
 }
 
@@ -84,15 +85,18 @@ func (d *deploymentController) Run() {
 	defer crash.HandleCrash()
 	klog.Infof("Start deployment controller from namespace: %s", d.NameSpace)
 
-	go d.informer.Run(d.stopCh)
-
-	if !cache.WaitForCacheSync(d.stopCh, d.informer.HasSynced) {
+	if !cache.WaitForCacheSync(d.stopCh, d.deploymentInformerSynced) {
 		runtime.HandleError(fmt.Errorf("%s Timed out waiting for caches to sync", d.NameSpace))
 		return
 	}
 
 	if klog.V(2) {
-		for _, deployment := range d.indexer.List() {
+		ret, err := d.deploymentLister.List(labels.Everything())
+		if err != nil {
+			klog.Errorf("[%s] list deployment err: %v", d.Namespace(), err)
+			return
+		}
+		for _, deployment := range ret {
 			klog.Infof("Deployment controller %v from namespace: %s", deployment, d.NameSpace)
 		}
 	}
@@ -106,8 +110,13 @@ func (d *deploymentController) Stop() {
 func (d *deploymentController) ProcessImageEvent(event eventsv1.ImageEvent) {
 	defer crash.HandleCrash(crash.DefaultHandler)
 
-	for _, object := range d.indexer.List() {
-		deployment := object.(*apiappsv1.Deployment)
+	deployments, err := d.deploymentLister.List(labels.Everything())
+	if err != nil {
+		klog.Errorf("[%s] list deployment err: %v", d.Namespace(), err)
+		return
+	}
+
+	for _, deployment := range deployments {
 		var updateContainers []k8sv1.Container
 
 		for _, container := range deployment.Spec.Template.Spec.Containers {

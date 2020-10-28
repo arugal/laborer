@@ -26,90 +26,99 @@ import (
 	"github.com/arugal/laborer/pkg/controller/namespace"
 	"github.com/arugal/laborer/pkg/informers"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
+	listersv1 "k8s.io/client-go/listers/apps/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog"
 )
 
 const (
-	resourceName = "configmaps"
-
 	configNameSuffix = "-config"
 
 	restartedAt = "kubectl.kubernetes.io/restartedAt"
+
+	annotationName = "laborer.configmap.associate.deployment"
 )
 
 func init() {
 	namespace.RegisterNewControllerFunc(newConfigmapControllerFunc())
 }
 
+// configmapController 当 configmap 变化时重新部署对应的 deployment
 type configmapController struct {
 	namespace.BaseController
 
-	stopCh   chan struct{}
-	indexer  cache.Indexer
-	informer cache.Controller
+	stopCh                  chan struct{}
+	configmapInformerSynced cache.InformerSynced
+
+	deploymentLister listersv1.DeploymentLister
 }
 
 // newConfigmapControllerFunc
 func newConfigmapControllerFunc() namespace.NewControllerFunc {
-	return func(ns string, k8sClient kubernetes.Interface, informers informers.InformerFactory) namespace.Controller {
-		configMapListWatcher := cache.NewListWatchFromClient(k8sClient.CoreV1().RESTClient(), resourceName, ns, fields.Everything())
-
+	return func(ns string, k8sClient kubernetes.Interface, namespaceInformerFactory informers.InformerFactory) namespace.Controller {
+		deploymentsLister := namespaceInformerFactory.KubernetesSharedInformerFactory().Apps().V1().Deployments().Lister()
 		deploymentsClient := k8sClient.AppsV1().Deployments(ns)
 
-		indexer, informer := cache.NewIndexerInformer(configMapListWatcher, &v1.ConfigMap{}, 0, cache.ResourceEventHandlerFuncs{
+		configmapInformer := namespaceInformerFactory.KubernetesSharedInformerFactory().Core().V1().ConfigMaps().Informer()
+		configmapInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				// ignore
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				configMap := newObj.(*v1.ConfigMap)
+				needRestartDeployments := analyzeDeployments(configMap)
 
-				if !strings.HasSuffix(configMap.Name, configNameSuffix) {
-					return
-				}
+				for _, deploymentName := range needRestartDeployments {
+					deploy, err := deploymentsLister.Deployments(ns).Get(deploymentName)
+					if err != nil || deploy == nil {
+						if !errors.IsNotFound(err) {
+							klog.Errorf("[%s] get deployment [%s] err: %v", ns, deploymentName, err)
+						}
+						continue
+					}
 
-				deploymentName := strings.TrimSuffix(configMap.Name, configNameSuffix)
-				newDeployment := k8sv1.Deployment{
-					Spec: k8sv1.DeploymentSpec{
-						Template: k8sv1.PodTemplateSpec{
-							Metadata: k8sv1.Metadata{
-								Annotations: map[string]string{
-									restartedAt: time.Now().Format(time.RFC3339),
+					newDeployment := k8sv1.Deployment{
+						Spec: k8sv1.DeploymentSpec{
+							Template: k8sv1.PodTemplateSpec{
+								Metadata: k8sv1.Metadata{
+									Annotations: map[string]string{
+										restartedAt: time.Now().Format(time.RFC3339),
+									},
 								},
 							},
 						},
-					},
-				}
+					}
 
-				data, err := json.Marshal(newDeployment)
-				if err != nil {
-					klog.Errorf("ConfigMap %s controller marshal %v err: %s", ns, newDeployment, err)
-					return
-				}
-				if klog.V(2) {
-					klog.Infof("ConfigMap %s controller restart %s deployment: %s", ns, deploymentName, string(data))
-				}
+					data, err := json.Marshal(newDeployment)
+					if err != nil {
+						klog.Errorf("ConfigMap [%s] controller marshal %v err: %s", ns, newDeployment, err)
+						return
+					}
+					if klog.V(2) {
+						klog.Infof("ConfigMap [%s] controller restart %s deployment: %s", ns, deploymentName, string(data))
+					}
 
-				_, err = deploymentsClient.Patch(deploymentName, types.StrategicMergePatchType, data)
-				if err != nil {
-					klog.Errorf("ConfigMap %s controller patch %v err: %s", ns, string(data), err)
+					_, err = deploymentsClient.Patch(deploymentName, types.StrategicMergePatchType, data)
+					if err != nil {
+						klog.Errorf("ConfigMap [%s] controller patch %v err: %s", ns, string(data), err)
+					}
 				}
 			},
 			DeleteFunc: func(obj interface{}) {
 				// ignore
 			},
-		}, cache.Indexers{})
+		})
+
 		return &configmapController{
 			BaseController: namespace.BaseController{
 				NameSpace: ns,
 			},
-			stopCh:   make(chan struct{}),
-			indexer:  indexer,
-			informer: informer,
+			stopCh:                  make(chan struct{}),
+			configmapInformerSynced: configmapInformer.HasSynced,
 		}
 	}
 }
@@ -119,9 +128,7 @@ func (c *configmapController) Run() {
 
 	klog.Infof("Start ConfigMap controller from namespace: %s", c.NameSpace)
 
-	go c.informer.Run(c.stopCh)
-
-	if !cache.WaitForCacheSync(c.stopCh, c.informer.HasSynced) {
+	if !cache.WaitForCacheSync(c.stopCh, c.configmapInformerSynced) {
 		runtime.HandleError(fmt.Errorf("%s Timed out waiting for caches to sync", c.NameSpace))
 		return
 	}
@@ -130,4 +137,24 @@ func (c *configmapController) Run() {
 func (c *configmapController) Stop() {
 	klog.Infof("Stopping ConfigMap controller from namespace: %s ", c.NameSpace)
 	close(c.stopCh)
+}
+
+// analyzeDeployments analyze configmap associated with deployment
+func analyzeDeployments(configmap *v1.ConfigMap) (deployments []string) {
+	// step1. 根据 configmap 的名称解析 deployment 的名称
+	if strings.HasSuffix(configmap.Name, configNameSuffix) {
+		deployments = append(deployments, strings.TrimSuffix(configmap.Name, configNameSuffix))
+	}
+
+	// step2. 从 annotation 中提取 configmap 关联的 deployment 的名称
+	if annotation, ok := configmap.Annotations[annotationName]; ok {
+		var deploys []string
+		err := json.Unmarshal([]byte(annotation), &deploys)
+		if err != nil {
+			klog.Errorf("Unmarshal configmap [%s.%s] annotation [%s] err: %v", configmap.Namespace, configmap.Name, annotation, err)
+			return
+		}
+		deployments = append(deployments, deploys...)
+	}
+	return
 }

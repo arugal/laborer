@@ -41,11 +41,12 @@ const (
 	enabled       = "true"
 )
 
+// NamespaceController namespace 控制器，根据 namespace 的 labels 判断是否启动 AggregationController
 type NamespaceController struct {
 	client kubernetes.Interface
 
-	informers         informers.InformerFactory
-	namespaceInformer informerv1.NamespaceInformer
+	namespaceInformer       informerv1.NamespaceInformer
+	namespaceInformerSynced cache.InformerSynced
 
 	aggregationControllerMap map[string]Controller
 }
@@ -55,8 +56,11 @@ func NewNamespaceController(informers informers.InformerFactory, client kubernet
 		client:                   client,
 		aggregationControllerMap: map[string]Controller{},
 	}
-	n.namespaceInformer = informers.KubernetesSharedInformerFactory().Core().V1().Namespaces()
-	n.namespaceInformer.Informer().AddEventHandler(n.newResourceEventHandlerFuncs())
+
+	namespaceInformer := informers.KubernetesSharedInformerFactory().Core().V1().Namespaces()
+	namespaceInformer.Informer().AddEventHandler(n.newResourceEventHandlerFuncs())
+
+	n.namespaceInformerSynced = namespaceInformer.Informer().HasSynced
 
 	imageEventInterface.AddImageEventFunc(n.ImageEventHandlerFunc)
 	return n
@@ -68,7 +72,7 @@ func (n *NamespaceController) Start(stopCh <-chan struct{}) error {
 	klog.Info("starting namespace controller")
 	defer klog.Info("shutting down namespace controller")
 
-	if !cache.WaitForCacheSync(stopCh, n.namespaceInformer.Informer().HasSynced) {
+	if !cache.WaitForCacheSync(stopCh, n.namespaceInformerSynced) {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
 
@@ -103,7 +107,7 @@ func (n *NamespaceController) syncAggregationController(et eventType, obj interf
 }
 
 func (n *NamespaceController) addNewAggregationController(namespace string) {
-	controller := NewAggregationController(namespace, n.client, n.informers)
+	controller := NewAggregationController(namespace, n.client)
 	controller.Run()
 	n.aggregationControllerMap[namespace] = controller
 }
