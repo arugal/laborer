@@ -19,9 +19,9 @@ package namespace
 import (
 	"fmt"
 
-	eventsv1 "github.com/arugal/laborer/pkg/api/events/v1"
 	"github.com/arugal/laborer/pkg/crash"
 	"github.com/arugal/laborer/pkg/informers"
+	eventservice "github.com/arugal/laborer/pkg/service/event"
 	v1 "k8s.io/api/core/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	informerv1 "k8s.io/client-go/informers/core/v1"
@@ -51,7 +51,7 @@ type NamespaceController struct {
 	aggregationControllerMap map[string]Controller
 }
 
-func NewNamespaceController(informers informers.InformerFactory, client kubernetes.Interface, imageEventInterface eventsv1.ImageEventInterface) *NamespaceController {
+func NewNamespaceController(informers informers.InformerFactory, client kubernetes.Interface, imageEventCollect eventservice.ImageEventCollect) *NamespaceController {
 	n := &NamespaceController{
 		client:                   client,
 		aggregationControllerMap: map[string]Controller{},
@@ -62,7 +62,7 @@ func NewNamespaceController(informers informers.InformerFactory, client kubernet
 
 	n.namespaceInformerSynced = namespaceInformer.Informer().HasSynced
 
-	imageEventInterface.AddImageEventFunc(n.ImageEventHandlerFunc)
+	imageEventCollect.RegisterHandlerFunc(n.ImageEventHandlerFunc)
 	return n
 }
 
@@ -118,7 +118,7 @@ func (n *NamespaceController) stopAggregationController(c Controller) {
 }
 
 // ImageEventHandlerFunc update the deployment container image based on event.
-func (n *NamespaceController) ImageEventHandlerFunc(event eventsv1.ImageEvent) {
+func (n *NamespaceController) ImageEventHandlerFunc(event eventservice.ImageEvent) {
 	for _, ctrl := range n.aggregationControllerMap {
 		ctrl.ProcessImageEvent(event)
 	}

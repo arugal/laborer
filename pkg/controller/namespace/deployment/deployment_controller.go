@@ -20,11 +20,11 @@ import (
 	"encoding/json"
 	"fmt"
 
-	eventsv1 "github.com/arugal/laborer/pkg/api/events/v1"
 	k8sv1 "github.com/arugal/laborer/pkg/api/k8s/v1"
 	"github.com/arugal/laborer/pkg/controller/namespace"
 	"github.com/arugal/laborer/pkg/crash"
 	"github.com/arugal/laborer/pkg/informers"
+	eventservice "github.com/arugal/laborer/pkg/service/event"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/runtime"
@@ -107,7 +107,7 @@ func (d *deploymentController) Stop() {
 	close(d.stopCh)
 }
 
-func (d *deploymentController) ProcessImageEvent(event eventsv1.ImageEvent) {
+func (d *deploymentController) ProcessImageEvent(event eventservice.ImageEvent) {
 	defer crash.HandleCrash(crash.DefaultHandler)
 
 	deployments, err := d.deploymentLister.List(labels.Everything())
@@ -120,7 +120,7 @@ func (d *deploymentController) ProcessImageEvent(event eventsv1.ImageEvent) {
 		var updateContainers []k8sv1.Container
 
 		for _, container := range deployment.Spec.Template.Spec.Containers {
-			containerImage := eventsv1.OfImageEvent(container.Image)
+			containerImage := eventservice.OfImageEvent(container.Image)
 			if containerImage.Image == event.Image && containerImage.Tag != event.Tag {
 				updateContainers = append(updateContainers, k8sv1.Container{
 					Name:  container.Name,

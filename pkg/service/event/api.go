@@ -14,7 +14,7 @@
  limitations under the License.
 */
 
-package v1
+package event
 
 import (
 	"fmt"
@@ -45,44 +45,41 @@ func OfImageEvent(image string) ImageEvent {
 	return imageEvent
 }
 
-// ImageEventHandlerFunc
+// ImageEventHandlerFunc 处理镜像时间的函数
 type ImageEventHandlerFunc func(event ImageEvent)
 
-// ImageEventInterface collect and process image event
-type ImageEventInterface interface {
-	// collect new image event
+// ImageEventCollect 收集镜像中心的 webhook(harbor) 事件, 并回调 ImageEventHandlerFunc
+type ImageEventCollect interface {
+	// 收集 webhook 产生的事件
 	Collect(event ImageEvent)
-	// register handler func
-	AddImageEventFunc(handler ImageEventHandlerFunc)
+	// 注册事件处理函数
+	RegisterHandlerFunc(handler ImageEventHandlerFunc)
 
 	Start(stop <-chan struct{})
 }
 
-type ImageEventCollect interface {
-	// collect new image event
-	Collect(event ImageEvent)
-}
-
-func NewImageEventInterface() ImageEventInterface {
-	return &defaultImageEventInterface{
+// NewImageEventCollect
+func NewImageEventCollect() ImageEventCollect {
+	return &defaultImageEventCollect{
 		eventCh: make(chan ImageEvent, 100),
 	}
 }
 
-type defaultImageEventInterface struct {
+// defaultImageEventCollect 收集器默认实现
+type defaultImageEventCollect struct {
 	eventCh      chan ImageEvent
 	handlerFuncs []ImageEventHandlerFunc
 }
 
-func (d *defaultImageEventInterface) Collect(event ImageEvent) {
+func (d *defaultImageEventCollect) Collect(event ImageEvent) {
 	d.eventCh <- event
 }
 
-func (d *defaultImageEventInterface) AddImageEventFunc(handler ImageEventHandlerFunc) {
+func (d *defaultImageEventCollect) RegisterHandlerFunc(handler ImageEventHandlerFunc) {
 	d.handlerFuncs = append(d.handlerFuncs, handler)
 }
 
-func (d *defaultImageEventInterface) Start(stop <-chan struct{}) {
+func (d *defaultImageEventCollect) Start(stop <-chan struct{}) {
 	warpHandlerFunc := func(event ImageEvent, handlerFunc ImageEventHandlerFunc) {
 		defer crash.HandleCrash(crash.DefaultHandler)
 		handlerFunc(event)

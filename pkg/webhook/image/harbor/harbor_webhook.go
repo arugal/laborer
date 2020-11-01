@@ -21,15 +21,16 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	eventsv1 "github.com/arugal/laborer/pkg/api/events/v1"
+	eventservice "github.com/arugal/laborer/pkg/service/event"
 	"k8s.io/klog"
 )
 
+// imageEventWebHook harbor webhook
 type imageEventWebHook struct {
-	collect eventsv1.ImageEventCollect
+	collect eventservice.ImageEventCollect
 }
 
-func NewImageEventWebHook(collect eventsv1.ImageEventCollect) http.Handler {
+func NewImageEventWebHook(collect eventservice.ImageEventCollect) http.Handler {
 	return &imageEventWebHook{
 		collect: collect,
 	}
@@ -68,6 +69,6 @@ func (i *imageEventWebHook) ServeHTTP(_ http.ResponseWriter, req *http.Request) 
 	}
 
 	for _, resource := range webhook.EventData.Resources {
-		i.collect.Collect(eventsv1.OfImageEvent(resource.ResourceURL))
+		i.collect.Collect(eventservice.OfImageEvent(resource.ResourceURL))
 	}
 }

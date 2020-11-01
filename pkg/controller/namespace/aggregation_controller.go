@@ -17,8 +17,8 @@
 package namespace
 
 import (
-	eventsv1 "github.com/arugal/laborer/pkg/api/events/v1"
 	"github.com/arugal/laborer/pkg/informers"
+	eventservice "github.com/arugal/laborer/pkg/service/event"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -37,7 +37,7 @@ type Controller interface {
 	Namespace() string
 	Run()
 	Stop()
-	ProcessImageEvent(event eventsv1.ImageEvent)
+	ProcessImageEvent(event eventservice.ImageEvent)
 }
 
 type NewControllerFunc func(namespace string, k8sClient kubernetes.Interface, namespaceInformerFactory informers.InformerFactory) Controller
@@ -51,7 +51,7 @@ func (b BaseController) Namespace() string {
 	return b.NameSpace
 }
 
-func (b BaseController) ProcessImageEvent(eventsv1.ImageEvent) {
+func (b BaseController) ProcessImageEvent(eventservice.ImageEvent) {
 
 }
 
@@ -99,7 +99,7 @@ func (a *aggregationController) Stop() {
 	close(a.stopCh)
 }
 
-func (a *aggregationController) ProcessImageEvent(event eventsv1.ImageEvent) {
+func (a *aggregationController) ProcessImageEvent(event eventservice.ImageEvent) {
 	for _, c := range a.controllers {
 		c.ProcessImageEvent(event)
 	}
