@@ -21,13 +21,22 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"net/http"
-	"sort"
+	ht "net/http"
+	"strings"
 
 	"github.com/antihax/optional"
 	"github.com/scultura-org/harborapi"
+	"k8s.io/klog"
 )
 
+type protocol string
+
+const (
+	http  protocol = "http"
+	https protocol = "https"
+)
+
+// NotFoundRepoError 未找到对应的 repo
 type NotFoundRepoError struct {
 	message string
 }
@@ -36,19 +45,28 @@ func (e NotFoundRepoError) Error() string {
 	return e.message
 }
 
+// NotSupportRegisterError 不支持的注册中心地址
+type NotSupportRegisterError struct {
+	host string
+}
+
+func (e NotSupportRegisterError) Error() string {
+	return fmt.Sprintf("only support %s", e.host)
+}
+
 // RepositoryService 镜像服务
 type RepositoryService interface {
 	// 获取镜像最新的 tag
-	LatestTag(projectName, repoName string) (tag string, err error)
+	LatestTag(host, projectName, repoName string) (tag string, err error)
 }
 
 // RepositoryServiceOption 设置 repository service
 type RepositoryServiceOption func(service *harborRepositoryService)
 
-// WithBasePath
-func WithBasePath(basePath string) RepositoryServiceOption {
+// WithHttp default use https
+func WithHttp() RepositoryServiceOption {
 	return func(service *harborRepositoryService) {
-		service.basePath = basePath
+		service.protocol = http
 	}
 }
 
@@ -59,31 +77,49 @@ func WithInsecureSkipVerify(insecureSkipVerify bool) RepositoryServiceOption {
 	}
 }
 
+// WithPathPrefix default is /api/v2.0
+func WithPathPrefix(pathPrefix string) RepositoryServiceOption {
+	return func(service *harborRepositoryService) {
+		if !strings.HasPrefix(pathPrefix, "/") {
+			pathPrefix = "/" + pathPrefix
+		}
+		service.pathPrefix = pathPrefix
+	}
+}
+
+// TODO support multiple register
 // NewRepositoryService
 func NewRepositoryService(opts ...RepositoryServiceOption) (RepositoryService, error) {
-	service := &harborRepositoryService{}
+	service := &harborRepositoryService{
+		protocol:   https,
+		pathPrefix: "/api/v2.0",
+	}
 
 	// with options
 	for _, opt := range opts {
 		opt(service)
 	}
 
-	if service.basePath == "" {
-		return nil, errors.New("baseURL must be set.")
+	if service.host == "" {
+		return nil, errors.New("host must be set")
+	}
+
+	if service.pathPrefix == "" {
+		klog.V(2).Infof("pathPrefix is empty")
 	}
 
 	cfg := harborapi.NewConfiguration()
-	cfg.BasePath = service.basePath
+	cfg.BasePath = fmt.Sprintf("%s://%s%s", service.protocol, service.host, service.pathPrefix)
 
 	// insecureSkipVerify
 	if service.insecureSkipVerify {
-		tr := &http.Transport{
+		tr := &ht.Transport{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,
 			},
 		}
 
-		cfg.HTTPClient = &http.Client{
+		cfg.HTTPClient = &ht.Client{
 			Transport: tr,
 		}
 	}
@@ -94,13 +130,20 @@ func NewRepositoryService(opts ...RepositoryServiceOption) (RepositoryService, e
 }
 
 type harborRepositoryService struct {
-	basePath           string
+	protocol   protocol
+	host       string
+	pathPrefix string
+
 	insecureSkipVerify bool
 
 	apiClient *harborapi.APIClient
 }
 
-func (h *harborRepositoryService) LatestTag(projectName, repoName string) (tag string, err error) {
+func (h *harborRepositoryService) LatestTag(host, projectName, repoName string) (tag string, err error) {
+	if host != h.host {
+		return tag, &NotSupportRegisterError{h.host}
+	}
+
 	artifacts, _, err := h.apiClient.ArtifactApi.ListArtifacts(context.Background(), projectName, repoName, &harborapi.ArtifactApiListArtifactsOpts{
 		PageSize: optional.NewInt64(100),
 	})
@@ -116,36 +159,4 @@ func (h *harborRepositoryService) LatestTag(projectName, repoName string) (tag s
 	latestTag := TagSlice(latestArtifact.Tags).Sort().Latest()
 
 	return latestTag.Name, nil
-}
-
-// 根据 PushTime 对 Artifact 排序
-type ArtifactSlice []harborapi.Artifact
-
-func (t ArtifactSlice) Len() int           { return len(t) }
-func (t ArtifactSlice) Less(i, j int) bool { return t[i].PushTime.Before(t[j].PushTime) }
-func (t ArtifactSlice) Swap(i, j int)      { t[i], t[j] = t[j], t[i] }
-
-func (t ArtifactSlice) Sort() ArtifactSlice {
-	sort.Sort(t)
-	return t
-}
-
-func (t ArtifactSlice) Latest() harborapi.Artifact {
-	return t[len(t)-1]
-}
-
-// 根据 PushTime 对 Tag 排序
-type TagSlice []harborapi.Tag
-
-func (t TagSlice) Len() int           { return len(t) }
-func (t TagSlice) Less(i, j int) bool { return t[i].PushTime.Before(t[j].PushTime) }
-func (t TagSlice) Swap(i, j int)      { t[i], t[j] = t[j], t[i] }
-
-func (t TagSlice) Sort() TagSlice {
-	sort.Sort(t)
-	return t
-}
-
-func (t TagSlice) Latest() harborapi.Tag {
-	return t[len(t)-1]
 }
