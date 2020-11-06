@@ -1,11 +1,4 @@
 apiVersion: v1
-kind: Namespace
-metadata:
-  labels:
-    control-plane: controller-manager
-  name: laborer-system
----
-apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: laborer

@@ -1,0 +1,28 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  namespace: system
+  name: mutating-webhook-configuration
+webhooks:
+  - clientConfig:
+      service:
+        name: webhook-service
+        namespace: system
+        path: /webhook-v1alpha1-pod-latest-tag
+        port: 443
+    name: latest-tag-webhook.laborer.io
+    rules:
+      - operations:
+          - "CREATE"
+        apiGroups:
+          - ""
+        apiVersions:
+          - "v1"
+        resources:
+          - "pods"
+        scope: Namespaced
+    namespaceSelector:
+      matchLabels:
+        laborere-latest-tag: enabled
+    admissionReviewVersions: ["v1", "v1beta1"]
+    sideEffects: None
