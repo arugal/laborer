@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	repositoryservice "github.com/arugal/laborer/pkg/service/repository"
 	"github.com/arugal/laborer/pkg/simple/client/k8s"
 	"github.com/spf13/pflag"
 	"k8s.io/klog"
@@ -34,11 +35,12 @@ const (
 )
 
 type LaborerControllerManagerOptions struct {
-	KubernetesOptions    *k8s.KubernetesOptions
-	LeaderElect          bool
-	LeaderElectNamespace string
-	LeaderElection       *leaderelection.LeaderElectionConfig
-	WebhookCertDir       string
+	KubernetesOptions        *k8s.KubernetesOptions
+	LeaderElect              bool
+	LeaderElectNamespace     string
+	LeaderElection           *leaderelection.LeaderElectionConfig
+	WebhookCertDir           string
+	RepositoryServiceOptions repositoryservice.RepositoryServiceOptions
 }
 
 func NewLaborerControllerManagerOptions() *LaborerControllerManagerOptions {
@@ -59,6 +61,7 @@ func (s *LaborerControllerManagerOptions) Flags() cliflag.NamedFlagSets {
 	fss := cliflag.NamedFlagSets{}
 
 	s.KubernetesOptions.AddFlags(fss.FlagSet("kubernetes"), s.KubernetesOptions)
+	s.RepositoryServiceOptions.AddFlags(fss.FlagSet("repository"))
 
 	fs := fss.FlagSet("leaderelection")
 	s.bindLeaderElectionFlags(s.LeaderElection, fs)

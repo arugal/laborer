@@ -25,6 +25,7 @@ import (
 	"github.com/arugal/laborer/pkg/crash"
 	"github.com/arugal/laborer/pkg/informers"
 	eventservice "github.com/arugal/laborer/pkg/service/event"
+	apiappsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/runtime"
@@ -54,17 +55,26 @@ type deploymentController struct {
 // newDeploymentControllerFunc 创建 deployment 控制器
 func newDeploymentControllerFunc(ns string, k8sClient kubernetes.Interface, namespaceInformerFactory informers.InformerFactory) namespace.Controller {
 	deploymentLister := namespaceInformerFactory.KubernetesSharedInformerFactory().Apps().V1().Deployments().Lister()
-	namespaceInformer := namespaceInformerFactory.KubernetesSharedInformerFactory().Apps().V1().Deployments().Informer()
+	deploymentInformer := namespaceInformerFactory.KubernetesSharedInformerFactory().Apps().V1().Deployments().Informer()
 
-	namespaceInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	deploymentInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			klog.V(2).Infof("Deployment %s controller add: %v", ns, obj)
+			if klog.V(2) {
+				deployment := obj.(*apiappsv1.Deployment)
+				klog.Infof("Deployment add %s.%s", ns, deployment.Name)
+			}
 		},
 		UpdateFunc: func(old, new interface{}) {
-			klog.V(2).Infof("Deployment %s controller add: %v", ns, new)
+			if klog.V(2) {
+				deployment := new.(*apiappsv1.Deployment)
+				klog.Infof("Deployment update %s.%s", ns, deployment.Name)
+			}
 		},
 		DeleteFunc: func(obj interface{}) {
-			klog.V(2).Infof("Deployment %s controller add: %v", ns, obj)
+			if klog.V(2) {
+				deployment := obj.(*apiappsv1.Deployment)
+				klog.Infof("Deployment delete %s.%s", ns, deployment.Name)
+			}
 		},
 	})
 
@@ -75,7 +85,7 @@ func newDeploymentControllerFunc(ns string, k8sClient kubernetes.Interface, name
 			NameSpace: ns,
 		},
 		stopCh:                   make(chan struct{}),
-		deploymentInformerSynced: namespaceInformer.HasSynced,
+		deploymentInformerSynced: deploymentInformer.HasSynced,
 		deploymentLister:         deploymentLister,
 		deploymentsClient:        deploymentsClient,
 	}
@@ -83,27 +93,16 @@ func newDeploymentControllerFunc(ns string, k8sClient kubernetes.Interface, name
 
 func (d *deploymentController) Run() {
 	defer crash.HandleCrash()
-	klog.Infof("Start deployment controller from namespace: %s", d.NameSpace)
+	klog.Infof("Starting deployment controller from namespace: %s", d.NameSpace)
 
 	if !cache.WaitForCacheSync(d.stopCh, d.deploymentInformerSynced) {
 		runtime.HandleError(fmt.Errorf("%s Timed out waiting for caches to sync", d.NameSpace))
 		return
 	}
-
-	if klog.V(2) {
-		ret, err := d.deploymentLister.List(labels.Everything())
-		if err != nil {
-			klog.Errorf("[%s] list deployment err: %v", d.Namespace(), err)
-			return
-		}
-		for _, deployment := range ret {
-			klog.Infof("Deployment controller %v from namespace: %s", deployment, d.NameSpace)
-		}
-	}
 }
 
 func (d *deploymentController) Stop() {
-	klog.Infof("Stopping Deployment controller from namespace: %s", d.NameSpace)
+	klog.Infof("Stopping deployment controller from namespace: %s", d.NameSpace)
 	close(d.stopCh)
 }
 

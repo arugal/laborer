@@ -41,6 +41,9 @@ const (
 	enabled       = "true"
 )
 
+// +kubebuilder:rbac:groups="",resources=configmaps;namespaces,verbs=get;list;watch
+// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=list;watch;patch
+
 // NamespaceController namespace 控制器，根据 namespace 的 labels 判断是否启动 AggregationController
 type NamespaceController struct {
 	client kubernetes.Interface
@@ -69,7 +72,7 @@ func NewNamespaceController(informers informers.InformerFactory, client kubernet
 func (n *NamespaceController) Start(stopCh <-chan struct{}) error {
 	defer utilruntime.HandleCrash()
 
-	klog.Info("starting namespace controller")
+	klog.Info("Starting namespace controller")
 	defer klog.Info("shutting down namespace controller")
 
 	if !cache.WaitForCacheSync(stopCh, n.namespaceInformerSynced) {

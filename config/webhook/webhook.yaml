@@ -13,16 +13,16 @@ webhooks:
     name: latest-tag-webhook.laborer.io
     rules:
       - operations:
-          - "CREATE"
+          - CREATE
         apiGroups:
-          - ""
+          - apps
         apiVersions:
-          - "v1"
+          - v1
         resources:
-          - "pods"
+          - deployments
         scope: Namespaced
     namespaceSelector:
       matchLabels:
         laborere-latest-tag: enabled
-    admissionReviewVersions: ["v1", "v1beta1"]
+    admissionReviewVersions: [ "v1", "v1beta1" ]
     sideEffects: None

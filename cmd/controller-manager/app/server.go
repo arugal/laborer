@@ -116,7 +116,8 @@ func run(s *options.LaborerControllerManagerOptions, stopCh <-chan struct{}) err
 	klog.V(0).Info("setting up manager")
 
 	imageEventCollect := eventservice.NewImageEventCollect()
-	repositoryService, err := repositoryservice.NewRepositoryService()
+	repositoryService, err := repositoryservice.NewRepositoryService(repositoryservice.WithHost(s.RepositoryServiceOptions.Host),
+		repositoryservice.WithInsecureSkipVerify(true))
 	if err != nil {
 		klog.Fatalf("NewRepositoryService err: %v\n", err)
 	}

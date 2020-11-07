@@ -11,6 +11,8 @@ spec:
         args:
           - "--webhook-cert-dir"
           - "/tmp/k8s-webhook-server/serving-certs"
+          - "--repository-host"
+          - "docker-register.bobandata.com"
         ports:
         - containerPort: 8443
           name: webhook-server

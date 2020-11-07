@@ -16,11 +16,6 @@ patchesStrategicMerge:
   - manager_webhook_patch.yaml
   - webhook_ca_bundle_patch.yaml
 
-images:
-  - name: controller
-    newName: docker-register.bobandata.com/middleware/laborer2
-    newTag: latest
-
 # [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix including the one in
 # crd/kustomization.yaml
 #- manager_webhook_patch.yaml

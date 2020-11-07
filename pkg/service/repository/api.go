@@ -87,6 +87,13 @@ func WithPathPrefix(pathPrefix string) RepositoryServiceOption {
 	}
 }
 
+// WithHost
+func WithHost(host string) RepositoryServiceOption {
+	return func(service *harborRepositoryService) {
+		service.host = host
+	}
+}
+
 // TODO support multiple register
 // NewRepositoryService
 func NewRepositoryService(opts ...RepositoryServiceOption) (RepositoryService, error) {
