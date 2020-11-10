@@ -28,7 +28,7 @@ type ImageEvent struct {
 	Tag   string `json:"tag"`
 }
 
-func (e ImageEvent) ImageAndTag() string {
+func (e ImageEvent) String() string {
 	return fmt.Sprintf("%s:%s", e.Image, e.Tag)
 }
 

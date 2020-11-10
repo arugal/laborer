@@ -47,6 +47,9 @@ func NewLatestTagWebHook(repoService repositoryservice.RepositoryService) admiss
 }
 
 func (l *latestTagWebHook) Handle(ctx context.Context, req admission.Request) admission.Response {
+	klog.V(2).Infof("uid: %s, kind: %s, resource: %s, subResource: %s, RequestKind: %s, dryRun: %t",
+		req.UID, req.Kind, req.Resource, req.SubResource, req.RequestKind, *req.DryRun)
+
 	deployment := &appsv1.Deployment{}
 	err := l.decoder.Decode(req, deployment)
 	if err != nil {
@@ -71,11 +74,14 @@ func (l *latestTagWebHook) Handle(ctx context.Context, req admission.Request) ad
 		if tag == oldTag {
 			continue
 		}
+		newImage := generateNewImageName(host, project, repo, tag, part)
+		klog.Infof("Replace initContainer %s.%s.%s image %s -> %s, dryRun: %t", deployment.Namespace, deployment.Name,
+			initContainer.Name, initContainer.Image, newImage, *req.DryRun)
 
 		patches = append(patches, jsonpatch.JsonPatchOperation{
 			Operation: "replace",
-			Path:      fmt.Sprintf("spec.template.spec.initContainers[%d].image", i),
-			Value:     generateNewImageName(host, project, repo, tag, part),
+			Path:      fmt.Sprintf("/spec/template/spec/initContainers/%d/image", i),
+			Value:     newImage,
 		})
 	}
 
@@ -96,10 +102,14 @@ func (l *latestTagWebHook) Handle(ctx context.Context, req admission.Request) ad
 			continue
 		}
 
+		newImage := generateNewImageName(host, project, repo, tag, part)
+		klog.Infof("Replace container %s.%s.%s image %s -> %s, dryRun: %t", deployment.Namespace, deployment.Name,
+			container.Name, container.Image, newImage, *req.DryRun)
+
 		patches = append(patches, jsonpatch.JsonPatchOperation{
 			Operation: "replace",
-			Path:      fmt.Sprintf("spec.template.spec.containers[%d].image", i),
-			Value:     generateNewImageName(host, project, repo, tag, part),
+			Path:      fmt.Sprintf("/spec/template/spec/containers/%d/image", i),
+			Value:     newImage,
 		})
 	}
 

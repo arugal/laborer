@@ -61,19 +61,21 @@ func newDeploymentControllerFunc(ns string, k8sClient kubernetes.Interface, name
 		AddFunc: func(obj interface{}) {
 			if klog.V(2) {
 				deployment := obj.(*apiappsv1.Deployment)
-				klog.Infof("Deployment add %s.%s", ns, deployment.Name)
+				klog.Infof("deployment add %s.%s", ns, deployment.Name)
 			}
 		},
 		UpdateFunc: func(old, new interface{}) {
 			if klog.V(2) {
-				deployment := new.(*apiappsv1.Deployment)
-				klog.Infof("Deployment update %s.%s", ns, deployment.Name)
+				oldDeployment := old.(*apiappsv1.Deployment)
+				newDeployment := new.(*apiappsv1.Deployment)
+				klog.Infof("deployment update %s.%s, oldVersion: %s, newVersion: %s", ns, newDeployment.Name,
+					oldDeployment.ResourceVersion, newDeployment.ResourceVersion)
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
 			if klog.V(2) {
 				deployment := obj.(*apiappsv1.Deployment)
-				klog.Infof("Deployment delete %s.%s", ns, deployment.Name)
+				klog.Infof("deployment delete %s.%s", ns, deployment.Name)
 			}
 		},
 	})
@@ -123,7 +125,7 @@ func (d *deploymentController) ProcessImageEvent(event eventservice.ImageEvent) 
 			if containerImage.Image == event.Image && containerImage.Tag != event.Tag {
 				updateContainers = append(updateContainers, k8sv1.Container{
 					Name:  container.Name,
-					Image: event.ImageAndTag(),
+					Image: event.String(),
 				})
 			}
 		}
@@ -141,15 +143,14 @@ func (d *deploymentController) ProcessImageEvent(event eventservice.ImageEvent) 
 
 			data, err := json.Marshal(newDeployment)
 			if err != nil {
-				klog.Error(err)
+				klog.Errorf("deployment [%s] controller marshal %v err: %s", d.NameSpace, newDeployment, err)
 				return
 			}
 
-			if klog.V(2) {
-				klog.Infof("Deployment %s controller update container image: %s", d.NameSpace, string(data))
+			klog.Infof("image event trigger %s.%s update, new image: %s", deployment.Namespace, deployment.Name, event)
+			if _, err = d.deploymentsClient.Patch(deployment.Name, types.StrategicMergePatchType, data); err != nil {
+				klog.Errorf("deployment [%s] controller patch %v err: %s", d.NameSpace, string(data), err)
 			}
-
-			_, err = d.deploymentsClient.Patch(deployment.Name, types.StrategicMergePatchType, data)
 		}
 	}
 }

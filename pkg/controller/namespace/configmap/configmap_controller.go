@@ -27,7 +27,6 @@ import (
 	"github.com/arugal/laborer/pkg/informers"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -51,8 +50,8 @@ func init() {
 type configmapController struct {
 	namespace.BaseController
 
-	stopCh   chan struct{}
-	informer cache.Controller
+	stopCh                  chan struct{}
+	configmapInformerSynced cache.InformerSynced
 }
 
 // newConfigmapControllerFunc
@@ -69,9 +68,17 @@ func newConfigmapControllerFunc() namespace.NewControllerFunc {
 				}
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
-				configmap := newObj.(*v1.ConfigMap)
-				klog.V(2).Infof("configmap update: %s.%s", ns, configmap.Name)
-				needRestartDeployments := analyzeDeployments(configmap)
+				newConfigmap := newObj.(*v1.ConfigMap)
+				oldConfigmap := oldObj.(*v1.ConfigMap)
+				if oldConfigmap.ResourceVersion == newConfigmap.ResourceVersion {
+					klog.V(2).Infof("configmap update %s.%s, oldVersion: %s, newVersion: %s, ignored",
+						newConfigmap.Namespace, newConfigmap.Name, newConfigmap.ResourceVersion, oldConfigmap.ResourceVersion)
+					// ignored (by resync)
+					return
+				}
+
+				klog.V(2).Infof("configmap update: %s.%s", ns, newConfigmap.Name)
+				needRestartDeployments := analyzeDeployments(newConfigmap)
 
 				for _, deploymentName := range needRestartDeployments {
 					deploy, err := deploymentsLister.Deployments(ns).Get(deploymentName)
@@ -96,16 +103,13 @@ func newConfigmapControllerFunc() namespace.NewControllerFunc {
 
 					data, err := json.Marshal(newDeployment)
 					if err != nil {
-						klog.Errorf("ConfigMap [%s] controller marshal %v err: %s", ns, newDeployment, err)
+						klog.Errorf("configmap [%s] controller marshal %v err: %s", ns, newDeployment, err)
 						return
 					}
-					if klog.V(2) {
-						klog.Infof("ConfigMap [%s] controller restart %s deployment: %s", ns, deploymentName, string(data))
-					}
-					klog.Infof("configmap trigger %s restarted", deploymentName)
-					_, err = deploymentsClient.Patch(deploymentName, types.StrategicMergePatchType, data)
-					if err != nil {
-						klog.Errorf("ConfigMap [%s] controller patch %v err: %s", ns, string(data), err)
+
+					klog.Infof("configmap trigger %s.%s restarted", newConfigmap.Namespace, deploymentName)
+					if _, err = deploymentsClient.Patch(deploymentName, types.StrategicMergePatchType, data); err != nil {
+						klog.Errorf("configmap [%s] controller patch %v err: %s", ns, string(data), err)
 					}
 				}
 			},
@@ -117,14 +121,15 @@ func newConfigmapControllerFunc() namespace.NewControllerFunc {
 			},
 		}
 
-		configMapListWatcher := cache.NewListWatchFromClient(k8sClient.CoreV1().RESTClient(), "configmaps", ns, fields.Everything())
-		_, informer := cache.NewIndexerInformer(configMapListWatcher, &v1.ConfigMap{}, 0, handlerFunc, cache.Indexers{})
+		informer := namespaceInformerFactory.KubernetesSharedInformerFactory().Core().V1().ConfigMaps().Informer()
+		informer.AddEventHandler(handlerFunc)
+
 		return &configmapController{
 			BaseController: namespace.BaseController{
 				NameSpace: ns,
 			},
-			stopCh:   make(chan struct{}),
-			informer: informer,
+			stopCh:                  make(chan struct{}),
+			configmapInformerSynced: informer.HasSynced,
 		}
 	}
 }
@@ -133,8 +138,7 @@ func (c *configmapController) Run() {
 	defer runtime.HandleCrash()
 	klog.Infof("Starting configmap controller from namespace: %s", c.NameSpace)
 
-	go c.informer.Run(c.stopCh)
-	if !cache.WaitForCacheSync(c.stopCh, c.informer.HasSynced) {
+	if !cache.WaitForCacheSync(c.stopCh, c.configmapInformerSynced) {
 		runtime.HandleError(fmt.Errorf("%s Timed out waiting for caches to sync", c.NameSpace))
 		return
 	}

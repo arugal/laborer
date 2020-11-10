@@ -83,7 +83,7 @@ subjectAltName = @alt_names
 DNS.1 = ${service}
 DNS.2 = ${service}.${namespace}
 DNS.3 = ${service}.${namespace}.svc
-DNS.3 = ${service}.${namespace}.svc.cluster.local
+DNS.4 = ${service}.${namespace}.svc.cluster.local
 EOF
 
 openssl genrsa -out ${tmpdir}/server-key.pem 2048
