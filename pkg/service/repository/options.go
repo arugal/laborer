@@ -16,13 +16,40 @@
 
 package repository
 
-import "github.com/spf13/pflag"
+import (
+	"fmt"
+
+	"github.com/spf13/pflag"
+)
 
 type RepositoryServiceOptions struct {
 	// repository address
-	Host string `json:"host" yaml:"host"`
+	Host               string `json:"host" yaml:"host"`
+	Protocol           string `json:"protocol" yaml:"protocol"`
+	InsecureSkipVerify bool   `json:"insecureSkipVerify" yaml:"insecureSkipVerify"`
+	ApiPathPrefix      string `json:"apiPathPrefix" yaml:"apiPathPrefix"`
 }
 
 func (r *RepositoryServiceOptions) AddFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&r.Host, "repository-host", r.Host, "image repository host")
+	fs.StringVar(&r.Host, "repository-host", r.Host, "image repository host, eg: demo.goharbor.io (harbor is currently supported only)")
+	fs.StringVar(&r.Protocol, "repository-protocol", r.Protocol, "repository protocol, optional: http; https")
+	fs.BoolVar(&r.InsecureSkipVerify, "repository-insecure-skip-verify", r.InsecureSkipVerify,
+		"if true, server-side certificate authentication is skipped when the protocol is https")
+	fs.StringVar(&r.ApiPathPrefix, "repository-api-path-prefix", r.ApiPathPrefix, "")
+}
+
+func (r *RepositoryServiceOptions) Validate() (errs []error) {
+	if r.Protocol != "http" && r.Protocol != "https" {
+		errs = append(errs, fmt.Errorf("repository protocol only support http, https"))
+	}
+	return errs
+}
+
+func NewRepositoryServiceOptions() *RepositoryServiceOptions {
+	return &RepositoryServiceOptions{
+		Host:               "",
+		Protocol:           "https",
+		InsecureSkipVerify: true,
+		ApiPathPrefix:      "/api/v2.0",
+	}
 }

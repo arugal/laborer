@@ -30,17 +30,13 @@ import (
 	cliflag "k8s.io/component-base/cli/flag"
 )
 
-const (
-	leaderElectNamespace = "devops"
-)
-
 type LaborerControllerManagerOptions struct {
 	KubernetesOptions        *k8s.KubernetesOptions
 	LeaderElect              bool
 	LeaderElectNamespace     string
 	LeaderElection           *leaderelection.LeaderElectionConfig
 	WebhookCertDir           string
-	RepositoryServiceOptions repositoryservice.RepositoryServiceOptions
+	RepositoryServiceOptions *repositoryservice.RepositoryServiceOptions
 }
 
 func NewLaborerControllerManagerOptions() *LaborerControllerManagerOptions {
@@ -51,9 +47,10 @@ func NewLaborerControllerManagerOptions() *LaborerControllerManagerOptions {
 			RenewDeadline: 15 * time.Second,
 			RetryPeriod:   5 * time.Second,
 		},
-		LeaderElect:          false,
-		LeaderElectNamespace: leaderElectNamespace,
-		WebhookCertDir:       "",
+		LeaderElect:              false,
+		LeaderElectNamespace:     "",
+		WebhookCertDir:           "",
+		RepositoryServiceOptions: repositoryservice.NewRepositoryServiceOptions(),
 	}
 }
 
@@ -91,6 +88,7 @@ func (s *LaborerControllerManagerOptions) Flags() cliflag.NamedFlagSets {
 
 func (s *LaborerControllerManagerOptions) Validate() (errs []error) {
 	errs = append(errs, s.KubernetesOptions.Validate()...)
+	errs = append(errs, s.RepositoryServiceOptions.Validate()...)
 	return errs
 }
 

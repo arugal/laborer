@@ -18,3 +18,5 @@
 
 bin/*
 
+# Temp configuration file
+config/default/webhook_ca_bundle_patch.yaml

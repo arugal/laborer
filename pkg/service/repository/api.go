@@ -19,21 +19,12 @@ package repository
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	ht "net/http"
-	"strings"
 
 	"github.com/antihax/optional"
 	"github.com/scultura-org/harborapi"
 	"k8s.io/klog"
-)
-
-type protocol string
-
-const (
-	http  protocol = "http"
-	https protocol = "https"
 )
 
 // NotFoundRepoError 未找到对应的 repo
@@ -60,66 +51,22 @@ type RepositoryService interface {
 	LatestTag(host, projectName, repoName string) (tag string, err error)
 }
 
-// RepositoryServiceOption 设置 repository service
-type RepositoryServiceOption func(service *harborRepositoryService)
-
-// WithHttp default use https
-func WithHttp() RepositoryServiceOption {
-	return func(service *harborRepositoryService) {
-		service.protocol = http
-	}
-}
-
-// WithInsecureSkipVerify
-func WithInsecureSkipVerify(insecureSkipVerify bool) RepositoryServiceOption {
-	return func(service *harborRepositoryService) {
-		service.insecureSkipVerify = insecureSkipVerify
-	}
-}
-
-// WithPathPrefix default is /api/v2.0
-func WithPathPrefix(pathPrefix string) RepositoryServiceOption {
-	return func(service *harborRepositoryService) {
-		if !strings.HasPrefix(pathPrefix, "/") {
-			pathPrefix = "/" + pathPrefix
-		}
-		service.pathPrefix = pathPrefix
-	}
-}
-
-// WithHost
-func WithHost(host string) RepositoryServiceOption {
-	return func(service *harborRepositoryService) {
-		service.host = host
-	}
-}
-
-// TODO support multiple register
+// TODO support more repository
 // NewRepositoryService
-func NewRepositoryService(opts ...RepositoryServiceOption) (RepositoryService, error) {
-	service := &harborRepositoryService{
-		protocol:   https,
-		pathPrefix: "/api/v2.0",
+func NewRepositoryService(options *RepositoryServiceOptions) (RepositoryService, error) {
+	if options.Host == "" {
+		return &ignoreRepositoryService{}, nil
 	}
 
-	// with options
-	for _, opt := range opts {
-		opt(service)
-	}
-
-	if service.host == "" {
-		return nil, errors.New("host must be set")
-	}
-
-	if service.pathPrefix == "" {
-		klog.V(2).Infof("pathPrefix is empty")
+	if options.ApiPathPrefix == "" {
+		klog.Warning("repository service api path prefix is empty")
 	}
 
 	cfg := harborapi.NewConfiguration()
-	cfg.BasePath = fmt.Sprintf("%s://%s%s", service.protocol, service.host, service.pathPrefix)
+	cfg.BasePath = fmt.Sprintf("%s://%s%s", options.Protocol, options.Host, options.ApiPathPrefix)
 
 	// insecureSkipVerify
-	if service.insecureSkipVerify {
+	if options.InsecureSkipVerify && options.Protocol == "http" {
 		tr := &ht.Transport{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,
@@ -131,17 +78,22 @@ func NewRepositoryService(opts ...RepositoryServiceOption) (RepositoryService, e
 		}
 	}
 
-	service.apiClient = harborapi.NewAPIClient(cfg)
+	service := &harborRepositoryService{
+		apiClient: harborapi.NewAPIClient(cfg),
+	}
 
 	return service, nil
 }
 
-type harborRepositoryService struct {
-	protocol   protocol
-	host       string
-	pathPrefix string
+type ignoreRepositoryService struct {
+}
 
-	insecureSkipVerify bool
+func (i *ignoreRepositoryService) LatestTag(_, _, _ string) (tag string, err error) {
+	return "", &NotSupportRegisterError{host: ""}
+}
+
+type harborRepositoryService struct {
+	host string
 
 	apiClient *harborapi.APIClient
 }

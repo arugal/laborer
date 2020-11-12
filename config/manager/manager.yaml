@@ -21,18 +21,19 @@ spec:
         control-plane: controller-manager
     spec:
       containers:
-      - command:
-        - /manager
-        image: controller:latest
-        name: manager
-        resources:
-          limits:
-            cpu: 100m
-            memory: 30Mi
-          requests:
-            cpu: 100m
-            memory: 20Mi
+        - command:
+            - /manager
+          args:
+            - "--leader-elect"
+            - "--leader-elect-namespace"
+            - "$(MANAGER_NAMESPACE)"
+          image: controller:latest
+          name: manager
+          resources:
+            limits:
+              cpu: 100m
+              memory: 30Mi
+            requests:
+              cpu: 100m
+              memory: 20Mi
       terminationGracePeriodSeconds: 10
-      tolerations:
-        - key: node-role.kubernetes.io/master
-          effect: NoSchedule

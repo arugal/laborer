@@ -1,2 +1,12 @@
 resources:
   - manager.yaml
+
+vars:
+  - name: MANAGER_NAMESPACE
+    objref:
+      kind: Deployment
+      name: controller-manager
+      group: apps
+      apiVersion: v1
+    fieldref:
+      fieldpath: metadata.namespace

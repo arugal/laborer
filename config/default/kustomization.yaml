@@ -16,6 +16,7 @@ resources:
 
 patchesStrategicMerge:
   - manager_webhook_patch.yaml
+  - manager_pods_assigning_patch.yaml
   - webhook_ca_bundle_patch.yaml
 
 # [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix including the one in
@@ -29,7 +30,7 @@ patchesStrategicMerge:
 
 images:
   - name: controller
-    newName: docker-register.bobandata.com/middleware/laborer2
+    newName: laborer
     newTag: latest
 
 # the following config is for teaching kustomize how to do var substitution
