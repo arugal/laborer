@@ -7,17 +7,23 @@ spec:
   template:
     spec:
       containers:
-      - name: manager
-        ports:
-        - containerPort: 9443
-          name: webhook-server
-          protocol: TCP
-        volumeMounts:
-        - mountPath: /tmp/k8s-webhook-server/serving-certs
-          name: cert
-          readOnly: true
+        - name: manager
+          args:
+            - "--webhook-cert-dir"
+            - "/tmp/k8s-webhook-server/serving-certs"
+            - "--leader-elect"
+            - "--leader-elect-namespace"
+            - "$(MANAGER_NAMESPACE)"
+          ports:
+            - containerPort: 8443
+              name: webhook-server
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /tmp/k8s-webhook-server/serving-certs
+              name: cert
+              readOnly: true
       volumes:
-      - name: cert
-        secret:
-          defaultMode: 420
-          secretName: webhook-server-cert
+        - name: cert
+          secret:
+            defaultMode: 420
+            secretName: webhook-server-cert
