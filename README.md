@@ -25,7 +25,7 @@ Laborer
 
 3. 指定 `configmap` 关联的 `deployment` 集合
 
-    `kubectl patch configmaps <configmap name> -n <namespace name> -p='{"metadata": {"annotations": {"laborer.configmap.associate.deployment": "[<deployment array>]"}}}'`
+    `kubectl annotate configmaps <configmap name> -n <namespace name> --overwrite laborer.configmap.associate.deployment="[<deployment array>]"`
 
 4. 启用创建 `deployment` 时修改镜像 `tag`
 
