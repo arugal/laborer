@@ -151,9 +151,12 @@ func (c *configmapController) Stop() {
 
 // analyzeDeployments analyze configmap associated with deployment
 func analyzeDeployments(configmap *v1.ConfigMap) (deployments []string) {
+	// 通过 map 过滤重复的 deployment name
+	var deploymentsMap = make(map[string]bool)
+
 	// step1. 根据 configmap 的名称解析 deployment 的名称
 	if strings.HasSuffix(configmap.Name, configNameSuffix) {
-		deployments = append(deployments, strings.TrimSuffix(configmap.Name, configNameSuffix))
+		deploymentsMap[strings.TrimSuffix(configmap.Name, configNameSuffix)] = true
 	}
 
 	// step2. 从 annotation 中提取 configmap 关联的 deployment 的名称
@@ -164,7 +167,13 @@ func analyzeDeployments(configmap *v1.ConfigMap) (deployments []string) {
 			klog.Errorf("Unmarshal configmap [%s.%s] annotation [%s] err: %v", configmap.Namespace, configmap.Name, annotation, err)
 			return
 		}
-		deployments = append(deployments, deploys...)
+		for _, deploy := range deploys {
+			deploymentsMap[deploy] = true
+		}
+	}
+	// map to since
+	for k := range deploymentsMap {
+		deployments = append(deployments, k)
 	}
 	return
 }
