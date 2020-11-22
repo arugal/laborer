@@ -29,6 +29,7 @@ spec:
             - "$(MANAGER_NAMESPACE)"
           image: controller:latest
           name: manager
+          imagePullPolicy: IfNotPresent
           resources:
             limits:
               cpu: 100m
