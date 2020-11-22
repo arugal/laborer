@@ -23,7 +23,6 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          push: true
           platforms: linux/amd64
           tags: |
             docker.pkg.github.com/arugal/laborer/manager:latest
