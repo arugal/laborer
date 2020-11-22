@@ -10,11 +10,6 @@ jobs:
     name: Image
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Go 1.15
-        uses: actions/setup-go@v1
-        with:
-          go-version: 1.15
-        id: go
       - name: Login to DockerHub
         uses: docker/login-action@v1
         with:
@@ -23,5 +18,5 @@ jobs:
       - name: Build and push
         run: |
           export IMG="arugaldocker/laborer:latest"
-          make docker-build
-          make docker-push
+          docker build . -t ${IMG}
+          docker push ${IMG}
