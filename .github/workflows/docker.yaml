@@ -19,10 +19,6 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           registry: docker.pkg.github.com
       - name: Push to GitHub Packages
-        uses: docker/build-push-action@v2
-        with:
-          context: .
-          file: ./Dockerfile
-          platforms: linux/amd64
-          tags: |
-            docker.pkg.github.com/arugal/laborer/manager:latest
+        run: |
+          docker build -t docker.pkg.github.com/arugal/laborer/manager:latest .
+          docker push docker.pkg.github.com/arugal/laborer/manager:latest
