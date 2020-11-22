@@ -1,13 +1,13 @@
-name: Image
+name: Package
 
 on:
   push:
     branches:
-      - image
+      - master
 
 jobs:
-  image:
-    name: Image
+  package:
+    name: Package
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
@@ -15,8 +15,8 @@ jobs:
       - name: Login to DockerHub
         uses: docker/login-action@v1
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          username: ${{ secrets.DOCKER_PKG_GITHUB_USERNAME }}
+          password: ${{ secrets.DOCKER_PKG_GITHUB_TOKEN }}
           registry: docker.pkg.github.com
       - name: Push to GitHub Packages
         run: |
