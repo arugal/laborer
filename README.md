@@ -53,7 +53,7 @@ Laborer
     
 3. 替换镜像（可选步骤） 
 
-    默认镜像为 `docker.io/arugal-docker/laborer:latest`，如果需要使用自定义镜像，通过设置环境变量 `export IMG=<iamge name>` 替换。
+    默认镜像为 `docker.pkg.github.com/arugal/laborer/manager:latest`，如果需要使用自定义镜像，通过设置环境变量 `export IMG=<image name>` 替换。
 
 4. 创建 `webhook` 并 `approve` 证书
 
