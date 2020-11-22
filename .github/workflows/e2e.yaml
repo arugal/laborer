@@ -18,8 +18,8 @@ jobs:
       matrix:
         case:
           - {name: 'Kubernetes 1.16', tag: 'v1.16.1'}
-          - {name: 'Kubernetes 1.17', tag: 'v1.17.1'}
-          - {name: 'Kubernetes 1.18', tag: 'v1.18.1'}
+          - {name: 'Kubernetes 1.17', tag: 'v1.17.0'}
+          - {name: 'Kubernetes 1.18', tag: 'v1.18.0'}
           - {name: 'Kubernetes 1.19', tag: 'v1.19.1'}
     steps:
       - name: Set up Go 1.15
