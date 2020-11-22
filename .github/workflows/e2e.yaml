@@ -33,7 +33,7 @@ jobs:
         run: bash ${SCRIPTS_DIR}/pre.sh
       - name: Create Kubrnetes With Kind
         run: |
-          kind create cluster --image kindest/node:${{ matrix.case.tag }} --wait 60s
+          kind create cluster --image kindest/node:${{ matrix.case.tag }} --wait 2m
           kubectl version
       - name: Build Docker Image
         run: |

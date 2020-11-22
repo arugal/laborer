@@ -30,7 +30,7 @@ patchesStrategicMerge:
 
 images:
   - name: controller
-    newName: laborer
+    newName: arugal-docker/laborer
     newTag: latest
 
 # the following config is for teaching kustomize how to do var substitution

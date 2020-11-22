@@ -22,7 +22,6 @@
 set -ex
 
 K8S_VERSION=${K8S_VERSION:-'k8s-v1.19.1'}
-MINIKUBE_VERSION=${MINIKUBE_VERESION:-'minikube-v1.13.1'}
 KIND_VERSION=${KIND_VERSION:-'v0.9.0'}
 KUSTOMIZE_VERSION=${KUSTOMIZE_VERSION:-'v3.8.7'}
 
@@ -30,11 +29,6 @@ KUSTOMIZE_VERSION=${KUSTOMIZE_VERSION:-'v3.8.7'}
 curl -sSL "https://storage.googleapis.com/kubernetes-release/release/${K8S_VERSION#k8s-}/bin/linux/amd64/kubectl" -o /tmp/kubectl
 chmod +x /tmp/kubectl
 sudo mv /tmp/kubectl /usr/local/bin/kubectl
-
-# minikube
-curl -sSL "https://storage.googleapis.com/minikube/releases/${MINIKUBE_VERSION#minikube-}/minikube-linux-amd64" -o /tmp/minikube
-chmod +x /tmp/minikube
-sudo mv /tmp/minikube /usr/local/bin/minikube
 
 # kind
 curl -sSL "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64" -Lo /tmp/kind
@@ -47,5 +41,3 @@ pushd /tmp
 tar -zxvf ./kustomize_linx.tar.gz && chmod +x ./kustomize
 sudo mv ./kustomize /usr/local/bin/kustomize
 popd
-
-sudo apt-get install -y socat conntrack
