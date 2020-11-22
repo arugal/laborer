@@ -49,6 +49,7 @@ jobs:
           sleep 5
           kubectl get all -n laborer-system
           kubectl wait --for=condition=available deployment.apps/$(kubectl get deployment -n laborer-system | awk '$1 !~ /NAME/ {print $1}') -n laborer-system --timeout=60s
+          kubectl logs $(kubectl get pods -n laborer-system | awk '$1 !~ /NAME/ {print $1}') -n laborer-system
       - name: Logs
         if: ${{ failure() }}
         run: |
