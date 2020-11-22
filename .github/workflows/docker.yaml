@@ -25,4 +25,5 @@ jobs:
           file: ./Dockerfile
           push: true
           platforms: linux/amd64
-          tag: docker.pkg.github.com/arugal/laborer/manager:latest
+          tags: |
+            docker.pkg.github.com/arugal/laborer/manager:latest
