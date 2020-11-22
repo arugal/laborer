@@ -16,5 +16,5 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           registry: docker.pkg.github.com
-          repository: arugal/laborer
+          repository: arugal/laborer/manager
           tag_with_ref: true
