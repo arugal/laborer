@@ -23,6 +23,7 @@ set -ex
 
 K8S_VERSION=${K8S_VERSION:-'k8s-v1.19.1'}
 MINIKUBE_VERSION=${MINIKUBE_VERESION:-'minikube-v1.13.1'}
+KIND_VERSION=$(KIND_VERSION:-'v0.9.0')
 KUSTOMIZE_VERSION=${KUSTOMIZE_VERSION:-'v3.8.7'}
 
 # kubectl
@@ -34,6 +35,11 @@ sudo mv /tmp/kubectl /usr/local/bin/kubectl
 curl -sSL "https://storage.googleapis.com/minikube/releases/${MINIKUBE_VERSION#minikube-}/minikube-linux-amd64" -o /tmp/minikube
 chmod +x /tmp/minikube
 sudo mv /tmp/minikube /usr/local/bin/minikube
+
+# kind
+curl -sSL "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64" -Lo /tmp/kind
+chmod +x /tmp/kind
+sudo mv /tmp/kind /usr/local/bin/kind
 
 # kustomize
 curl -sSL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" -o /tmp/kustomize_linx.tar.gz

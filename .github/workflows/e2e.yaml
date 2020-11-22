@@ -27,16 +27,17 @@ jobs:
           docker images
       - name: Prepare envrionment
         run: bash ${SCRIPTS_DIR}/pre.sh
-      - name: Create Kubrnetes With MiniKube
+      - name: Create Kubrnetes With Kind
         run: |
-          bash ${SCRIPTS_DIR}/minikube.sh start
+          kind create cluster
           kubectl version
-      - name: Kubernetes Cluster Info
-        if: ${{ failure() }}
-        run: |
-          df -h
-          minikube logs
-          minikube status
+          kind load docker-image controller:latest
+#      - name: Kubernetes Cluster Info
+#        if: ${{ failure() }}
+#        run: |
+#          df -h
+#          minikube logs
+#          minikube status
       - name: Deploy Laborer
         run: |
           kubectl create ns laborer-system
@@ -54,4 +55,4 @@ jobs:
           kubectl get pods -n laborer-system -o yaml
       - name: Clean Up
         if: ${{ always() }}
-        run: bash ${SCRIPTS_DIR}/minikube.sh stop
+        run: kind delete cluster
