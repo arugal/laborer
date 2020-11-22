@@ -4,7 +4,7 @@ on:
   pull_request:
   push:
     branches:
-      - test
+      - master
 
 env:
   SCRIPTS_DIR: test/scripts
@@ -33,7 +33,7 @@ jobs:
         run: bash ${SCRIPTS_DIR}/pre.sh
       - name: Create Kubrnetes With Kind
         run: |
-          kind create cluster --wait --image kindest/node:${{ matrix.case.tag }}
+          kind create cluster --image kindest/node:${{ matrix.case.tag }} --wait 60
           kubectl version
       - name: Build Docker Image
         run: |
