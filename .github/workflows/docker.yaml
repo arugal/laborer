@@ -10,6 +10,8 @@ jobs:
     name: Image
     runs-on: ubuntu-latest
     steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
       - name: Login to DockerHub
         uses: docker/login-action@v1
         with:
@@ -18,5 +20,5 @@ jobs:
       - name: Build and push
         run: |
           export IMG="arugaldocker/laborer:latest"
-          docker build . -t ${IMG}
-          docker push ${IMG}
+          make docker-build
+          make docker-push
