@@ -17,6 +17,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -34,8 +35,8 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
@@ -46,11 +47,12 @@ func NewControllerManagerCommand() *cobra.Command {
 		klog.Warning("Failed to load configuration from disk", err)
 	} else {
 		s = &options.LaborerControllerManagerOptions{
-			KubernetesOptions:    conf.KubernetesOptions,
-			LeaderElection:       s.LeaderElection,
-			LeaderElectNamespace: s.LeaderElectNamespace,
-			LeaderElect:          s.LeaderElect,
-			WebhookCertDir:       s.WebhookCertDir,
+			KubernetesOptions:        conf.KubernetesOptions,
+			RepositoryServiceOptions: conf.RepositoryServiceOptions,
+			LeaderElection:           s.LeaderElection,
+			LeaderElectNamespace:     s.LeaderElectNamespace,
+			LeaderElect:              s.LeaderElect,
+			WebhookCertDir:           s.WebhookCertDir,
 		}
 	}
 
@@ -63,7 +65,7 @@ func NewControllerManagerCommand() *cobra.Command {
 				os.Exit(1)
 			}
 
-			if err := run(s, signals.SetupSignalHandler()); err != nil {
+			if err := run(s, ctrl.SetupSignalHandler()); err != nil {
 				klog.Error(err)
 				os.Exit(1)
 			}
@@ -86,7 +88,7 @@ func NewControllerManagerCommand() *cobra.Command {
 	return cmd
 }
 
-func run(s *options.LaborerControllerManagerOptions, stopCh <-chan struct{}) error {
+func run(s *options.LaborerControllerManagerOptions, ctx context.Context) error {
 	kubernetesClient, err := k8s.NewKubernetesClient(s.KubernetesOptions)
 	if err != nil {
 		klog.Errorf("Failed to create kubernetes clientset %v", err)
@@ -133,12 +135,12 @@ func run(s *options.LaborerControllerManagerOptions, stopCh <-chan struct{}) err
 		"namespace-controller": namespaceController,
 	}
 
-	for name, ctrl := range controllers {
-		if ctrl == nil {
+	for name, c := range controllers {
+		if c == nil {
 			klog.V(4).Infof("%s is not going to run due to dependent component disabled.", name)
 			continue
 		}
-		if err := mgr.Add(ctrl); err != nil {
+		if err := mgr.Add(c); err != nil {
 			klog.Error(err, "add controller to manager failed", "name", name)
 			return err
 		}
@@ -146,11 +148,11 @@ func run(s *options.LaborerControllerManagerOptions, stopCh <-chan struct{}) err
 
 	// Start cache data after all informer is registered
 	klog.V(0).Info("Starting cache resource from apiserver...")
-	informerFactory.Start(stopCh)
+	informerFactory.Start(ctx.Done())
 
 	// Start image event interface
 	klog.V(0).Info("Starting image event collect...")
-	imageEventCollect.Start(stopCh)
+	imageEventCollect.Start(ctx.Done())
 
 	// webhook
 	hookServer := mgr.GetWebhookServer()
@@ -158,7 +160,7 @@ func run(s *options.LaborerControllerManagerOptions, stopCh <-chan struct{}) err
 	hookServer.Register("/webhook-v1alpha1-pod-latest-tag", &webhook.Admission{Handler: latesttag.NewLatestTagWebHook(repositoryService)})
 
 	klog.V(0).Info("Starting the controllers.")
-	if err = mgr.Start(stopCh); err != nil {
+	if err = mgr.Start(ctx); err != nil {
 		klog.Fatalf("unable to run the manager: %v", err)
 	}
 	return nil

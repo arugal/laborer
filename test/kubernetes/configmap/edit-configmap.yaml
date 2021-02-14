@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: web-config
+  namespace: test
+  annotations:
+    "laborer.configmap.associate.deployment": "web"
+data:
+  nginx.conf: |
+    worker_processes 1;
+    error_log stderr notice;
+    events {
+        worker_connections 1024;
+    }
+
+    http {
+        variables_hash_max_size 1024;
+        access_log off;
+        real_ip_header X-Real-IP;
+        charset utf-8;
+
+        server {
+            listen 80;
+
+            location / {
+                return 200 "by edit configmap";
+            }
+        }
+    }

@@ -1,0 +1,17 @@
+{
+  "type": "PUSH_ARTIFACT",
+  "event_data": {
+    "resources": [
+      {
+        "tag": "v2",
+        "resource_url": "web:v2"
+      }
+    ],
+    "repository": {
+      "name": "web",
+      "namespace": "",
+      "repo_full_name": "web",
+      "repo_type": "private"
+    }
+  }
+}

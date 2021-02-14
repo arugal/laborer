@@ -1,0 +1,11 @@
+resources:
+  - manager_test_configmap.yaml
+  - ../default
+
+patchesStrategicMerge:
+  - manager_test_patch.yaml
+
+images:
+  - name: docker.pkg.github.com/arugal/laborer/manager
+    newName: controller
+    newTag: latest

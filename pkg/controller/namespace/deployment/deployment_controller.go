@@ -17,6 +17,7 @@
 package deployment
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -26,6 +27,7 @@ import (
 	"github.com/arugal/laborer/pkg/informers"
 	eventservice "github.com/arugal/laborer/pkg/service/event"
 	apiappsv1 "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/runtime"
@@ -148,7 +150,7 @@ func (d *deploymentController) ProcessImageEvent(event eventservice.ImageEvent) 
 			}
 
 			klog.Infof("image event trigger %s.%s update, new image: %s", deployment.Namespace, deployment.Name, event)
-			if _, err = d.deploymentsClient.Patch(deployment.Name, types.StrategicMergePatchType, data); err != nil {
+			if _, err = d.deploymentsClient.Patch(context.Background(), deployment.Name, types.StrategicMergePatchType, data, metav1.PatchOptions{}); err != nil {
 				klog.Errorf("deployment [%s] controller patch %v err: %s", d.NameSpace, string(data), err)
 			}
 		}

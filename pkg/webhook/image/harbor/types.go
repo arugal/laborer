@@ -20,7 +20,7 @@ const (
 	Push = "PUSH_ARTIFACT"
 )
 
-// {
+//{
 //		"type":"PUSH_ARTIFACT",
 //	 	"occur_at":1603728502,
 //	 	"operator":"admin",
@@ -44,8 +44,8 @@ const (
 
 type WebHook struct {
 	Type      string    `json:"type"`
-	OccurAt   int32     `json:"occur_at"`
-	Operator  string    `json:"operator"`
+	OccurAt   int32     `json:"occur_at,omitempty"`
+	Operator  string    `json:"operator,omitempty"`
 	EventData EventData `json:"event_data"`
 }
 
@@ -55,13 +55,13 @@ type EventData struct {
 }
 
 type EventResource struct {
-	Digest      string `json:"digest"`
+	Digest      string `json:"digest,omitempty"`
 	Tag         string `json:"tag"`
 	ResourceURL string `json:"resource_url"`
 }
 
 type Repository struct {
-	DateCreated  int32  `json:"date_created"`
+	DateCreated  int32  `json:"date_created,omitempty"`
 	Name         string `json:"name"`
 	Namespace    string `json:"namespace"`
 	RepoFullName string `json:"repo_full_name"`

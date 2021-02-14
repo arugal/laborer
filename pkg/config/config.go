@@ -19,6 +19,7 @@ package config
 import (
 	"fmt"
 
+	"github.com/arugal/laborer/pkg/service/repository"
 	"github.com/arugal/laborer/pkg/simple/client/k8s"
 	"github.com/spf13/viper"
 )
@@ -32,12 +33,14 @@ const (
 )
 
 type Config struct {
-	KubernetesOptions *k8s.KubernetesOptions `json:"kubernetes,omitempty" yaml:"kubernetes,omitempty" mapstructure:"kubernetes"`
+	KubernetesOptions        *k8s.KubernetesOptions               `json:"kubernetes,omitempty" yaml:"kubernetes,omitempty" mapstructure:"kubernetes"`
+	RepositoryServiceOptions *repository.RepositoryServiceOptions `json:"repository,omitempty" yaml:"repository,omitempty" mapstructure:"repository"`
 }
 
 func New() *Config {
 	return &Config{
-		KubernetesOptions: k8s.NewKubernetesOptions(),
+		KubernetesOptions:        k8s.NewKubernetesOptions(),
+		RepositoryServiceOptions: repository.NewRepositoryServiceOptions(),
 	}
 }
 

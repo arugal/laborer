@@ -54,6 +54,12 @@ type RepositoryService interface {
 // TODO support more repository
 // NewRepositoryService
 func NewRepositoryService(options *RepositoryServiceOptions) (RepositoryService, error) {
+	if options.Mock {
+		// mock service
+		return &mockRepositoryService{
+			tags: options.MockTags,
+		}, nil
+	}
 	if options.Host == "" {
 		return &ignoreRepositoryService{}, nil
 	}

@@ -1,0 +1,187 @@
+name: E2E
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+env:
+  SCRIPTS_DIR: test/scripts
+  DEPLOY_WAIT: true
+
+jobs:
+  e2e-configmap:
+    name: E2E-ConfigMap
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        case:
+          - { name: 'Kubernetes 1.16', tag: 'v1.16.1' }
+          - { name: 'Kubernetes 1.17', tag: 'v1.17.0' }
+          - { name: 'Kubernetes 1.18', tag: 'v1.18.0' }
+          - { name: 'Kubernetes 1.19', tag: 'v1.19.1' }
+    steps:
+      - name: Set up Go 1.15
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.15
+        id: go
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+      - name: Prepare envrionment
+        run: bash ${SCRIPTS_DIR}/pre.sh
+      - name: Create Kubrnetes With Kind
+        run: bash ${SCRIPTS_DIR}/setup-env.sh kind ${{ matrix.case.tag }}
+      - name: Install Cert Manager
+        run: bash ${SCRIPTS_DIR}/setup-env.sh cert_manager
+      - name: Install Laborer
+        run: bash ${SCRIPTS_DIR}/setup-env.sh laborer
+      - name: Build Test Tool
+        run: bash ${SCRIPTS_DIR}/setup-env.sh test_tool
+      - name: Build Test Image
+        run: bash ${SCRIPTS_DIR}/setup-env.sh test_image
+      - name: Run Test
+        run: |
+          # setup web
+          kubectl apply --wait -f test/kubernetes/configmap/setup.yaml
+          kubectl wait --for=condition=available deployment.apps/$(kubectl get deployment -n test | awk '$1 !~ /NAME/ {print $1}') -n test --timeout=1200s
+          kubectl -n test port-forward service/web-service 20080:80 > /tmp/kind/a.log &
+          kubectl label ns test laborer.enable=true
+          sleep 5
+
+          test-tool http --expect "by configmap" --request http://127.0.0.1:20080/ --retries 60
+
+          kubectl apply -f test/kubernetes/configmap/edit-configmap.yaml
+          sleep 10
+          kubectl wait --for=condition=available deployment.apps/$(kubectl get deployment -n test | awk '$1 !~ /NAME/ {print $1}') -n test --timeout=1200s
+
+          kubectl -n test port-forward service/web-service 20081:80 > /tmp/kind/b.log &
+          test-tool http --expect "by edit configmap" --request http://127.0.0.1:20081/ --retries 60
+      - name: Logs
+        if: ${{ failure() }}
+        run: |
+          kubectl -n laborer-system logs --tail=10000 -l "app=laborer"
+          kubectl -n test logs --tail=10000 -l "app=web"
+
+          cat /tmp/kind/*
+      - name: Clean Up
+        if: ${{ always() }}
+        run: kind delete cluster
+
+  e2e-event:
+    name: E2E-Event
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        case:
+          - { name: 'Kubernetes 1.16', tag: 'v1.16.1' }
+          - { name: 'Kubernetes 1.17', tag: 'v1.17.0' }
+          - { name: 'Kubernetes 1.18', tag: 'v1.18.0' }
+          - { name: 'Kubernetes 1.19', tag: 'v1.19.1' }
+    steps:
+      - name: Set up Go 1.15
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.15
+        id: go
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+      - name: Prepare envrionment
+        run: bash ${SCRIPTS_DIR}/pre.sh
+      - name: Create Kubrnetes With Kind
+        run: bash ${SCRIPTS_DIR}/setup-env.sh kind ${{ matrix.case.tag }}
+      - name: Install Cert Manager
+        run: bash ${SCRIPTS_DIR}/setup-env.sh cert_manager
+      - name: Install Laborer
+        run: |
+          bash ${SCRIPTS_DIR}/setup-env.sh laborer
+          kubectl -n laborer-system port-forward service/laborer-webhook-service 20043:443 > /tmp/kind/a.log &
+      - name: Build Test Tool
+        run: bash ${SCRIPTS_DIR}/setup-env.sh test_tool
+      - name: Build Test Image
+        run: bash ${SCRIPTS_DIR}/setup-env.sh test_image
+      - name: Run Test
+        run: |
+          # setup web
+          kubectl apply --wait -f test/kubernetes/event/setup.yaml
+          kubectl wait --for=condition=available deployment.apps/$(kubectl get deployment -n test | awk '$1 !~ /NAME/ {print $1}') -n test --timeout=1200s
+          kubectl -n test port-forward service/web-service 20080:80 > /tmp/kind/b.log &
+          kubectl label ns test laborer.enable=true
+          sleep 5
+
+          test-tool http --expect "v1" --request http://127.0.0.1:20080/ --retries 60
+
+          # call webhook
+          curl -k -X POST -H "Content-Type: application/json" -d @./test/kubernetes/event/event.json https://127.0.0.1:20043/webhook-v1alpha1-harbor-image | echo
+          sleep 10
+          kubectl wait --for=condition=available deployment.apps/$(kubectl get deployment -n test | awk '$1 !~ /NAME/ {print $1}') -n test --timeout=1200s
+
+          kubectl -n test port-forward service/web-service 20081:80 > /tmp/kind/c.log &
+          test-tool http --expect "v2" --request http://127.0.0.1:20081/ --retries 60
+      - name: Logs
+        if: ${{ failure() }}
+        run: |
+          kubectl -n laborer-system logs --tail=10000 -l "app=laborer"
+          kubectl -n test logs --tail=10000 -l "app=web"
+
+          cat /tmp/kind/*
+      - name: Clean Up
+        if: ${{ always() }}
+        run: kind delete cluster
+
+  e2e-latestlag:
+    name: E2E-Latest-Tag
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        case:
+          - { name: 'Kubernetes 1.16', tag: 'v1.16.1' }
+          - { name: 'Kubernetes 1.17', tag: 'v1.17.0' }
+          - { name: 'Kubernetes 1.18', tag: 'v1.18.0' }
+          - { name: 'Kubernetes 1.19', tag: 'v1.19.1' }
+    steps:
+      - name: Set up Go 1.15
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.15
+        id: go
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+      - name: Prepare envrionment
+        run: bash ${SCRIPTS_DIR}/pre.sh
+      - name: Create Kubrnetes With Kind
+        run: bash ${SCRIPTS_DIR}/setup-env.sh kind ${{ matrix.case.tag }}
+      - name: Install Cert Manager
+        run: bash ${SCRIPTS_DIR}/setup-env.sh cert_manager
+      - name: Install Laborer
+        run: bash ${SCRIPTS_DIR}/setup-env.sh laborer
+      - name: Build Test Tool
+        run: bash ${SCRIPTS_DIR}/setup-env.sh test_tool
+      - name: Build Test Image
+        run: bash ${SCRIPTS_DIR}/setup-env.sh test_image
+      - name: Run Test
+        run: |
+          # setup web
+          kubectl create ns test
+          kubectl label ns test laborere.latest-tag=enabled
+
+          kubectl apply --wait -f test/kubernetes/latesttag/setup.yaml
+          kubectl wait --for=condition=available deployment.apps/$(kubectl get deployment -n test | awk '$1 !~ /NAME/ {print $1}') -n test --timeout=1200s
+          kubectl -n test port-forward service/web-service 20080:80 > /tmp/kind/a.log &
+
+          test-tool http --expect "v2" --request http://127.0.0.1:20080/ --retries 60
+      - name: Logs
+        if: ${{ failure() }}
+        run: |
+          kubectl -n kube-system logs --tail=10000 -l "component=kube-apiserver"
+          kubectl -n laborer-system logs --tail=10000 -l "app=laborer"
+          kubectl -n test logs --tail=10000 -l "app=web"
+
+          cat /tmp/kind/*
+      - name: Clean Up
+        if: ${{ always() }}
+        run: kind delete cluster

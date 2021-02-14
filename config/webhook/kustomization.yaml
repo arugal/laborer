@@ -1,6 +1,6 @@
 resources:
   - service.yaml
-  - webhook.yaml
+  - manifests.yaml
 
 configurations:
   - kustomizeconfig.yaml
