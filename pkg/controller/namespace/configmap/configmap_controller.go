@@ -17,6 +17,7 @@
 package configmap
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -27,6 +28,7 @@ import (
 	"github.com/arugal/laborer/pkg/informers"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -108,7 +110,7 @@ func newConfigmapControllerFunc() namespace.NewControllerFunc {
 					}
 
 					klog.Infof("configmap trigger %s.%s restarted", newConfigmap.Namespace, deploymentName)
-					if _, err = deploymentsClient.Patch(deploymentName, types.StrategicMergePatchType, data); err != nil {
+					if _, err = deploymentsClient.Patch(context.Background(), deploymentName, types.StrategicMergePatchType, data, metav1.PatchOptions{}); err != nil {
 						klog.Errorf("configmap [%s] controller patch %v err: %s", ns, string(data), err)
 					}
 				}
@@ -152,23 +154,27 @@ func (c *configmapController) Stop() {
 // analyzeDeployments analyze configmap associated with deployment
 func analyzeDeployments(configmap *v1.ConfigMap) (deployments []string) {
 	// 通过 map 过滤重复的 deployment name
-	var deploymentsMap = make(map[string]bool)
+	var deploymentsMap = make(map[string]struct{})
 
 	// step1. 根据 configmap 的名称解析 deployment 的名称
 	if strings.HasSuffix(configmap.Name, configNameSuffix) {
-		deploymentsMap[strings.TrimSuffix(configmap.Name, configNameSuffix)] = true
+		deploymentsMap[strings.TrimSuffix(configmap.Name, configNameSuffix)] = struct{}{}
 	}
 
 	// step2. 从 annotation 中提取 configmap 关联的 deployment 的名称
 	if annotation, ok := configmap.Annotations[annotationName]; ok {
-		var deploys []string
-		err := json.Unmarshal([]byte(annotation), &deploys)
-		if err != nil {
-			klog.Errorf("Unmarshal configmap [%s.%s] annotation [%s] err: %v", configmap.Namespace, configmap.Name, annotation, err)
-			return
-		}
-		for _, deploy := range deploys {
-			deploymentsMap[deploy] = true
+		if strings.HasPrefix(annotation, "[") && strings.HasSuffix(annotation, "]") {
+			var deploys []string
+			err := json.Unmarshal([]byte(annotation), &deploys)
+			if err != nil {
+				klog.Errorf("Unmarshal configmap [%s.%s] annotation [%s] err: %v", configmap.Namespace, configmap.Name, annotation, err)
+				return
+			}
+			for _, deploy := range deploys {
+				deploymentsMap[deploy] = struct{}{}
+			}
+		} else {
+			deploymentsMap[annotation] = struct{}{}
 		}
 	}
 	// map to since

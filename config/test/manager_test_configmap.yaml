@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: laborer-manager-config
+  namespace: laborer-system
+data:
+  laborer.yaml: |
+    repository:
+      mock: true
+      mockTags:
+        web: v2

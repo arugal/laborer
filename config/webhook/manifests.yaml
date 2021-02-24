@@ -4,6 +4,7 @@ metadata:
   name: mutating-webhook-configuration
 webhooks:
   - clientConfig:
+      caBundle: Cg==
       service:
         name: webhook-service
         namespace: system
@@ -24,6 +25,5 @@ webhooks:
       matchLabels:
         laborere.latest-tag: enabled
     admissionReviewVersions: [ "v1", "v1beta1" ]
-    matchPolicy: Exact
     timeoutSeconds: 30
     sideEffects: None

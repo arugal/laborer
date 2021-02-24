@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: controller-manager
+  namespace: system
+spec:
+  template:
+    spec:
+      containers:
+        - name: manager
+          args:
+            - "--webhook-cert-dir"
+            - "/tmp/k8s-webhook-server/serving-certs"
+            - "--leader-elect"
+            - "--leader-elect-namespace"
+            - "$(MANAGER_NAMESPACE)"
+            - "--v"
+            - '5'
+          volumeMounts:
+            - mountPath: /etc/laborer/laborer.yaml
+              name: manager-config
+              subPath: laborer.yaml
+      volumes:
+        - name: manager-config
+          configMap:
+            name: laborer-manager-config
+            items:
+              - key: laborer.yaml
+                path: laborer.yaml

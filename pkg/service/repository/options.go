@@ -23,6 +23,8 @@ import (
 )
 
 type RepositoryServiceOptions struct {
+	Mock     bool              `json:"mock,omitempty" yaml:"mock,omitempty"`
+	MockTags map[string]string `json:"mockTags,omitempty" yaml:"mockTags,omitempty"`
 	// repository address
 	Host               string `json:"host" yaml:"host"`
 	Protocol           string `json:"protocol" yaml:"protocol"`
@@ -31,6 +33,7 @@ type RepositoryServiceOptions struct {
 }
 
 func (r *RepositoryServiceOptions) AddFlags(fs *pflag.FlagSet) {
+	fs.BoolVar(&r.Mock, "repository-mock", r.Mock, "use mock repository service")
 	fs.StringVar(&r.Host, "repository-host", r.Host, "image repository host, eg: demo.goharbor.io (harbor is currently supported only)")
 	fs.StringVar(&r.Protocol, "repository-protocol", r.Protocol, "repository protocol, optional: http; https")
 	fs.BoolVar(&r.InsecureSkipVerify, "repository-insecure-skip-verify", r.InsecureSkipVerify,
@@ -47,6 +50,7 @@ func (r *RepositoryServiceOptions) Validate() (errs []error) {
 
 func NewRepositoryServiceOptions() *RepositoryServiceOptions {
 	return &RepositoryServiceOptions{
+		Mock:               false,
 		Host:               "",
 		Protocol:           "https",
 		InsecureSkipVerify: true,

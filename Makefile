@@ -70,3 +70,7 @@ CONTROLLER_GEN=$(GOBIN)/controller-gen
 else
 CONTROLLER_GEN=$(shell which controller-gen)
 endif
+
+# build test tool
+test-tool-build:
+	go build -a -o bin/test-tool test/cmd/main.go

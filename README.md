@@ -8,10 +8,9 @@ Laborer
 
 ## 功能
 
-+ 基于 `harbor webhook push` 事件, 更新 `deployment` 镜像 `tag`
++ 基于 `harbor webhook image push` 事件, 更新对应 `deployment.container` 镜像 `tag`
 + `configmap` 变化时重新部署关联的 `deployment`
-+ 创建 `deployment` 时将镜像 `tag` 修改为 `harbor` 中最新的 `tag`
-
++ 创建 `deployment` 时将镜像 `tag` 修改为 [harbor](https://goharbor.io/) 中最新的 `tag`
 
 ## 使用配置
 
@@ -19,20 +18,28 @@ Laborer
 
     `kubectl label ns <namespace name> laborer.enable=true`
 
-     **注意: tag更新依赖 `harbor webhook` 的回调事件，除了配置 `label` 还需要在对应的仓库配置 `webhook` **
+     **注意: tag更新依赖 `harbor webhook` 的回调事件，除了配置 `label` 外还需要在对应的仓库下配置添加 [webhook](https://goharbor.io/docs/2.1.0/working-with-projects/project-configuration/configure-webhooks/)**
      
-2. `configmap` 关联规则
+     + WebHook URL：
+     
+        `https://<ip:port>/webhook-v1alpha1-harbor-image`
+        
+       如果 `laborer` 和 `harbor` 部署在同一个 `Kubernetes` 集群内，可以使用 `laborer-webhook-service.laborer-system` 替换 `ip:port`
+        
+    + `configmap` 关联规则
 
-    + 拥有相同名称的 `deployment`。假设 `configmap` 名称为 `test-config` 则关联的 `deployment` 为 `test`
-    + 通过 `annotations/laborer.configmap.associate.deployment` 指定的 `deployment` 集合
+        1. 拥有相同名称的 `deployment`，假设 `configmap` 名称为 `test-config` 则关联的 `deployment` 为 `test`
+        2. 通过 `annotations/laborer.configmap.associate.deployment` 指定的 `deployment` 集合
+    
+    + 设置 `configmap` 关联的 `deployment` 集合
+        
+        `kubectl annotate configmaps <configmap name> -n <namespace name> --overwrite laborer.configmap.associate.deployment="[<deployment array>]"`
 
-3. 指定 `configmap` 关联的 `deployment` 集合
-
-    `kubectl annotate configmaps <configmap name> -n <namespace name> --overwrite laborer.configmap.associate.deployment="[<deployment array>]"`
-
-4. 启用创建 `deployment` 时修改镜像 `tag`
-
+2. 启用创建 `deployment` 时修改镜像 `tag`
+    
     `kubectl label ns <namespace name> laborere.latest-tag=enabled`
+     
+     **基于 [Tag.PushTime](https://github.com/arugal/laborer/blob/master/pkg/service/repository/types.go) 排序**
 
 ## Kubernetes 适配版本
 

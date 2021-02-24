@@ -17,6 +17,7 @@
 package namespace
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/arugal/laborer/pkg/crash"
@@ -69,17 +70,17 @@ func NewNamespaceController(informers informers.InformerFactory, client kubernet
 	return n
 }
 
-func (n *NamespaceController) Start(stopCh <-chan struct{}) error {
+func (n *NamespaceController) Start(ctx context.Context) error {
 	defer utilruntime.HandleCrash()
 
 	klog.Info("Starting namespace controller")
 	defer klog.Info("shutting down namespace controller")
 
-	if !cache.WaitForCacheSync(stopCh, n.namespaceInformerSynced) {
+	if !cache.WaitForCacheSync(ctx.Done(), n.namespaceInformerSynced) {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
 
-	<-stopCh
+	<-ctx.Done()
 	return nil
 }
 
