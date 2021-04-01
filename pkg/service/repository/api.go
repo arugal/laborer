@@ -85,6 +85,7 @@ func NewRepositoryService(options *RepositoryServiceOptions) (RepositoryService,
 	}
 
 	service := &harborRepositoryService{
+		host:      options.Host,
 		apiClient: harborapi.NewAPIClient(cfg),
 	}
 
