@@ -72,7 +72,7 @@ func NewRepositoryService(options *RepositoryServiceOptions) (RepositoryService,
 	cfg.BasePath = fmt.Sprintf("%s://%s%s", options.Protocol, options.Host, options.ApiPathPrefix)
 
 	// insecureSkipVerify
-	if options.InsecureSkipVerify && options.Protocol == "http" {
+	if options.InsecureSkipVerify && options.Protocol == "https" {
 		tr := &ht.Transport{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,
