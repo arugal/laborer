@@ -17,11 +17,6 @@
 #
 set -ex
 
-setup::kind() {
-    kind create cluster --image kindest/node:$1 --wait 2m
-    kubectl version
-}
-
 setup::cert_manager() {
     kubectl create namespace cert-manager
     helm repo add jetstack https://charts.jetstack.io
@@ -56,9 +51,6 @@ setup::test_tool() {
 }
 
 case "$1" in
-  kind)
-    setup::kind $2
-    ;;
   cert_manager)
     setup::cert_manager
     ;;

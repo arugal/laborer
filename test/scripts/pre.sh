@@ -21,23 +21,7 @@
 # Copy by https://github.com/apache/skywalking/blob/master/test/e2e-mesh/e2e-istio/scripts/pre.sh
 set -ex
 
-K8S_VERSION=${K8S_VERSION:-'k8s-v1.19.1'}
-KIND_VERSION=${KIND_VERSION:-'v0.9.0'}
 KUSTOMIZE_VERSION=${KUSTOMIZE_VERSION:-'v3.8.7'}
-HELM_VERSION=${HELM_VERSION:-'3'}
-
-# kubectl
-curl -sSL "https://storage.googleapis.com/kubernetes-release/release/${K8S_VERSION#k8s-}/bin/linux/amd64/kubectl" -o /tmp/kubectl
-chmod +x /tmp/kubectl
-sudo mv /tmp/kubectl /usr/local/bin/kubectl
-
-# kind
-curl -sSL "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64" -Lo /tmp/kind
-chmod +x /tmp/kind
-sudo mv /tmp/kind /usr/local/bin/kind
-
-# helm
-curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-${HELM_VERSION} | bash
 
 # kustomize
 curl -sSL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" -o /tmp/kustomize_linx.tar.gz
