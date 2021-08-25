@@ -22,10 +22,6 @@
 set -ex
 
 KUSTOMIZE_VERSION=${KUSTOMIZE_VERSION:-'v3.8.7'}
-HELM_VERSION=${HELM_VERSION:-'3'}
-
-# helm
-curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-${HELM_VERSION} | bash
 
 # kustomize
 curl -sSL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" -o /tmp/kustomize_linx.tar.gz

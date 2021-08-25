@@ -38,6 +38,10 @@ jobs:
           node_image: kindest/node:${{ matrix.case.tag }}
           cluster_name: kind
           kubectl_version: ${{ matrix.case.tag }}
+      - uses: azure/setup-helm@v1
+        with:
+          version: '3'
+        id: install
       - name: Install Cert Manager
         run: bash ${SCRIPTS_DIR}/setup-env.sh cert_manager
       - name: Install Laborer
@@ -101,6 +105,10 @@ jobs:
           node_image: kindest/node:${{ matrix.case.tag }}
           cluster_name: kind
           kubectl_version: ${{ matrix.case.tag }}
+      - uses: azure/setup-helm@v1
+        with:
+          version: '3'
+        id: install
       - name: Install Cert Manager
         run: bash ${SCRIPTS_DIR}/setup-env.sh cert_manager
       - name: Install Laborer
@@ -167,6 +175,10 @@ jobs:
           node_image: kindest/node:${{ matrix.case.tag }}
           cluster_name: kind
           kubectl_version: ${{ matrix.case.tag }}
+      - uses: azure/setup-helm@v1
+        with:
+          version: '3'
+        id: install
       - name: Install Cert Manager
         run: bash ${SCRIPTS_DIR}/setup-env.sh cert_manager
       - name: Install Laborer
