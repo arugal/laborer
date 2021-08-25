@@ -40,7 +40,7 @@ jobs:
           kubectl_version: ${{ matrix.case.tag }}
       - uses: azure/setup-helm@v1
         with:
-          version: '3'
+          version: '3.2.1'
         id: install
       - name: Install Cert Manager
         run: bash ${SCRIPTS_DIR}/setup-env.sh cert_manager
@@ -107,7 +107,7 @@ jobs:
           kubectl_version: ${{ matrix.case.tag }}
       - uses: azure/setup-helm@v1
         with:
-          version: '3'
+          version: '3.2.1'
         id: install
       - name: Install Cert Manager
         run: bash ${SCRIPTS_DIR}/setup-env.sh cert_manager
@@ -177,7 +177,7 @@ jobs:
           kubectl_version: ${{ matrix.case.tag }}
       - uses: azure/setup-helm@v1
         with:
-          version: '3'
+          version: '3.2.1'
         id: install
       - name: Install Cert Manager
         run: bash ${SCRIPTS_DIR}/setup-env.sh cert_manager
