@@ -36,7 +36,7 @@ jobs:
         uses: helm/kind-action@v1.2.0
         with:
           node_image: kindest/node:${{ matrix.case.tag }}
-          cluster_name: laborer-testing
+          cluster_name: kind
           kubectl_version: ${{ matrix.case.tag }}
       - name: Install Cert Manager
         run: bash ${SCRIPTS_DIR}/setup-env.sh cert_manager
@@ -95,8 +95,12 @@ jobs:
         uses: actions/checkout@v2
       - name: Prepare envrionment
         run: bash ${SCRIPTS_DIR}/pre.sh
-      - name: Create Kubrnetes With Kind
-        run: bash ${SCRIPTS_DIR}/setup-env.sh kind ${{ matrix.case.tag }}
+      - name: Create k8s Kind Cluster
+        uses: helm/kind-action@v1.2.0
+        with:
+          node_image: kindest/node:${{ matrix.case.tag }}
+          cluster_name: kind
+          kubectl_version: ${{ matrix.case.tag }}
       - name: Install Cert Manager
         run: bash ${SCRIPTS_DIR}/setup-env.sh cert_manager
       - name: Install Laborer
@@ -157,8 +161,12 @@ jobs:
         uses: actions/checkout@v2
       - name: Prepare envrionment
         run: bash ${SCRIPTS_DIR}/pre.sh
-      - name: Create Kubrnetes With Kind
-        run: bash ${SCRIPTS_DIR}/setup-env.sh kind ${{ matrix.case.tag }}
+      - name: Create k8s Kind Cluster
+        uses: helm/kind-action@v1.2.0
+        with:
+          node_image: kindest/node:${{ matrix.case.tag }}
+          cluster_name: kind
+          kubectl_version: ${{ matrix.case.tag }}
       - name: Install Cert Manager
         run: bash ${SCRIPTS_DIR}/setup-env.sh cert_manager
       - name: Install Laborer
