@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - master
+    paths-ignore:
+      - '.github/workflows/ci.yaml'
+      - '.github/workflows/e2e.features.yaml'
+      - 'hack/**'
+      - 'test/**'
+      - '**.md'
 
 jobs:
   package:
