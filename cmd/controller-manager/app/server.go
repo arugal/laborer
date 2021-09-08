@@ -25,10 +25,12 @@ import (
 	"github.com/arugal/laborer/pkg/config"
 	"github.com/arugal/laborer/pkg/controller/namespace"
 	"github.com/arugal/laborer/pkg/informers"
+	"github.com/arugal/laborer/pkg/server"
 	eventservice "github.com/arugal/laborer/pkg/service/event"
 	repositoryservice "github.com/arugal/laborer/pkg/service/repository"
 	"github.com/arugal/laborer/pkg/simple/client/k8s"
 	"github.com/arugal/laborer/pkg/utils/term"
+	"github.com/arugal/laborer/pkg/webhook/image/github"
 	"github.com/arugal/laborer/pkg/webhook/image/harbor"
 	"github.com/arugal/laborer/pkg/webhook/image/latesttag"
 	"github.com/spf13/cobra"
@@ -131,8 +133,13 @@ func run(s *options.LaborerControllerManagerOptions, ctx context.Context) error 
 
 	namespaceController := namespace.NewNamespaceController(informerFactory, kubernetesClient.Kubernetes(), imageEventCollect)
 
+	httpServer := server.NewHttpServer()
+	httpServer.Register("/webhook-v1alpha1-harbor-image", harbor.NewImageEventWebHook(imageEventCollect))
+	httpServer.Register("/webhook-v1alpha1-github-package", github.NewImageEventWebhook(imageEventCollect))
+
 	controllers := map[string]manager.Runnable{
-		"namespace-controller": namespaceController,
+		"namespace-controller":   namespaceController,
+		"http-server-controller": httpServer,
 	}
 
 	for name, c := range controllers {
@@ -154,8 +161,9 @@ func run(s *options.LaborerControllerManagerOptions, ctx context.Context) error 
 	klog.V(0).Info("Starting image event collect...")
 	imageEventCollect.Start(ctx.Done())
 
-	// webhook
+	// kubernetes admission webhook
 	hookServer := mgr.GetWebhookServer()
+	// TODO Exposure via HTTP
 	hookServer.Register("/webhook-v1alpha1-harbor-image", harbor.NewImageEventWebHook(imageEventCollect))
 	hookServer.Register("/webhook-v1alpha1-pod-latest-tag", &webhook.Admission{Handler: latesttag.NewLatestTagWebHook(repositoryService)})
 

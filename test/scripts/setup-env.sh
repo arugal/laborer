@@ -26,7 +26,7 @@ setup::cert_manager() {
 
 setup::laborer() {
   make docker-build
-  kind load docker-image controller:latest
+  kind load docker-image ghcr.io/arugal/laborer/manager:latest
 
   make manifests
   kustomize build config/test | kubectl apply --wait=${DEPLOY_WAIT} -f -

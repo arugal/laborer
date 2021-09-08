@@ -6,6 +6,6 @@ patchesStrategicMerge:
   - manager_test_patch.yaml
 
 images:
-  - name: docker.pkg.github.com/arugal/laborer/manager
-    newName: controller
+  - name: controller
+    newName: ghcr.io/arugal/laborer/manager
     newTag: latest
