@@ -8,17 +8,17 @@ commonLabels:
 namePrefix: laborer-
 
 resources:
-  - ../rbac
-  - ../manager
-  - ../webhook
-  - ../certmanager
+- ../rbac
+- ../manager
+- ../webhook
+- ../certmanager
   # [PROMETHEUS] To enable prometheus monitor, uncomment all sections with 'PROMETHEUS'.
   #- ../prometheus
 
-patchesStrategicMerge:
-  - manager_webhook_patch.yaml
 #  - manager_pods_assigning_patch.yaml
-  - webhookcainjection_patch.yaml
+patchesStrategicMerge:
+- manager_webhook_patch.yaml
+- webhookcainjection_patch.yaml
 
 # [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix including the one in
 # crd/kustomization.yaml
@@ -30,36 +30,40 @@ patchesStrategicMerge:
 #- webhookcainjection_patch.yaml
 
 images:
-  - name: controller
-    newName: docker.pkg.github.com/arugal/laborer/manager
-    newTag: latest
+- name: controller
+  newName: ghcr.io/arugal/laborer/manager
+  newTag: latest
 
 # the following config is for teaching kustomize how to do var substitution
-vars:
 # [CERTMANAGER] To enable cert-manager, uncomment all sections with 'CERTMANAGER' prefix.
-  - name: CERTIFICATE_NAMESPACE # namespace of the certificate CR
-    objref:
-      kind: Certificate
-      group: cert-manager.io
-      version: v1alpha2
-      name: serving-cert # this name should match the one in certificate.yaml
-    fieldref:
-      fieldpath: metadata.namespace
-  - name: CERTIFICATE_NAME
-    objref:
-      kind: Certificate
-      group: cert-manager.io
-      version: v1alpha2
-      name: serving-cert # this name should match the one in certificate.yaml
-  - name: SERVICE_NAMESPACE # namespace of the service
-    objref:
-      kind: Service
-      version: v1
-      name: webhook-service
-    fieldref:
-      fieldpath: metadata.namespace
-  - name: SERVICE_NAME
-    objref:
-      kind: Service
-      version: v1
-      name: webhook-service
+vars:
+- fieldref:
+    fieldPath: metadata.namespace
+  name: CERTIFICATE_NAMESPACE
+  objref:
+    group: cert-manager.io
+    kind: Certificate
+    name: serving-cert
+    version: v1alpha2
+- fieldref: {}
+  name: CERTIFICATE_NAME
+  objref:
+    group: cert-manager.io
+    kind: Certificate
+    name: serving-cert
+    version: v1alpha2
+- fieldref:
+    fieldPath: metadata.namespace
+  name: SERVICE_NAMESPACE
+  objref:
+    kind: Service
+    name: webhook-service
+    version: v1
+- fieldref: {}
+  name: SERVICE_NAME
+  objref:
+    kind: Service
+    name: webhook-service
+    version: v1
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
