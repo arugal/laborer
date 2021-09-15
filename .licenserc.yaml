@@ -26,5 +26,7 @@ header:
     - '**/*.json'
     - 'LICENSE'
     - '.gitignore'
+    - '.dockerignore'
+    - 'PROJECT'
     - 'test/scripts/pre.sh'
   comment: on-failure
