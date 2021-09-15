@@ -19,6 +19,7 @@
 # under the License.
 # ----------------------------------------------------------------------------
 # Copy by https://github.com/apache/skywalking/blob/master/test/e2e-mesh/e2e-istio/scripts/pre.sh
+
 set -ex
 
 KUSTOMIZE_VERSION=${KUSTOMIZE_VERSION:-'v3.8.7'}
