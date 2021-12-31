@@ -132,27 +132,29 @@ func (d *deploymentController) ProcessImageEvent(event eventservice.ImageEvent) 
 			}
 		}
 
-		if len(updateContainers) > 0 {
-			newDeployment := k8sv1.Deployment{
-				Spec: k8sv1.DeploymentSpec{
-					Template: k8sv1.PodTemplateSpec{
-						Spec: k8sv1.PodSpec{
-							Containers: updateContainers,
-						},
+		if len(updateContainers) < 1 {
+			continue
+		}
+
+		newDeployment := k8sv1.Deployment{
+			Spec: k8sv1.DeploymentSpec{
+				Template: k8sv1.PodTemplateSpec{
+					Spec: k8sv1.PodSpec{
+						Containers: updateContainers,
 					},
 				},
-			}
+			},
+		}
 
-			data, err := json.Marshal(newDeployment)
-			if err != nil {
-				klog.Errorf("deployment [%s] controller marshal %v err: %s", d.NameSpace, newDeployment, err)
-				return
-			}
+		data, err := json.Marshal(newDeployment)
+		if err != nil {
+			klog.Errorf("deployment [%s] controller marshal %v err: %s", d.NameSpace, newDeployment, err)
+			return
+		}
 
-			klog.Infof("image event trigger %s.%s update, new image: %s", deployment.Namespace, deployment.Name, event)
-			if _, err = d.deploymentsClient.Patch(context.Background(), deployment.Name, types.StrategicMergePatchType, data, metav1.PatchOptions{}); err != nil {
-				klog.Errorf("deployment [%s] controller patch %v err: %s", d.NameSpace, string(data), err)
-			}
+		klog.Infof("image event trigger %s.%s update, new image: %s", deployment.Namespace, deployment.Name, event)
+		if _, err = d.deploymentsClient.Patch(context.Background(), deployment.Name, types.StrategicMergePatchType, data, metav1.PatchOptions{}); err != nil {
+			klog.Errorf("deployment [%s] controller patch %v err: %s", d.NameSpace, string(data), err)
 		}
 	}
 }
